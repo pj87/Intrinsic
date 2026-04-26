@@ -286,6 +286,23 @@ void Default::loadRendererConfig()
   }
   ImageManager::createResources(_images);
 
+  // All freshly-created resolution-dependent images start in UNDEFINED.
+  // Transition them to SHADER_READ_ONLY_OPTIMAL so any draw call that happens
+  // before the first explicit barrier (e.g. GBuffer draws via the global
+  // texture descriptor set) sees a valid layout.
+  {
+    VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
+    for (auto& imageRef : _images)
+    {
+      ImageManager::insertImageMemoryBarrier(
+          initCmd, imageRef, VK_IMAGE_LAYOUT_UNDEFINED,
+          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    }
+    RenderSystem::flushTemporaryCommandBuffer();
+  }
+
   for (uint32_t i = 0u; i < renderSteps.Size(); ++i)
   {
     const rapidjson::Value& renderStepDesc = renderSteps[i];
