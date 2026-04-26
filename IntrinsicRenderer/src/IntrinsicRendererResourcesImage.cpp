@@ -448,10 +448,16 @@ void createTexture(ImageRef p_Ref)
 
   if (isSrgbFormat)
   {
+    // SRGB format doesn't support storage — restrict the gamma view's usage
+    VkImageViewUsageCreateInfo noStorageUsage = {};
+    noStorageUsage.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+    noStorageUsage.usage = imageCreateInfo.usage & ~VK_IMAGE_USAGE_STORAGE_BIT;
+    imageViewCreateInfo.pNext = &noStorageUsage;
     imageViewCreateInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
     result =
         vkCreateImageView(RenderSystem::_vkDevice, &imageViewCreateInfo,
                           nullptr, &ImageManager::_vkImageViewGamma(p_Ref));
+    imageViewCreateInfo.pNext = nullptr;
     imageViewCreateInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
     result =
         vkCreateImageView(RenderSystem::_vkDevice, &imageViewCreateInfo,
@@ -568,6 +574,7 @@ void createTextureFromFileCubemap(ImageRef p_Ref, gli::texture& p_Texture)
     imageCreateInfo.extent = {width, height, 1u};
     imageCreateInfo.usage =
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
   }
 
   VkImage& vkImage = ImageManager::_vkImage(p_Ref);

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-void calcDecal(in Decal decal, in vec3 posVS, in sampler2D[4095] globalTextures,
+void calcDecal(in Decal decal, in vec3 posVS,
                inout vec4 albedo, inout vec3 normal, inout vec2 pbr,
                float alphaFactor)
 {

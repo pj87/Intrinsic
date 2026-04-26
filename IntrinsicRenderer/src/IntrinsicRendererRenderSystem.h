@@ -335,7 +335,7 @@ private:
       prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
       prePresentBarrier.pNext = nullptr;
       prePresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      prePresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+      prePresentBarrier.dstAccessMask = 0;
       prePresentBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       prePresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
       prePresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -378,7 +378,8 @@ private:
       postPresentBarrier.image = _vkSwapchainImages[_backbufferIndex];
 
       vkCmdPipelineBarrier(vkCmdBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr,
+                           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0,
+                           nullptr,
                            0, nullptr, 1, &postPresentBarrier);
     }
   }

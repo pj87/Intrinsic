@@ -936,6 +936,7 @@ void Clustering::init()
         .push_back(BlendStates::kDefault);
   }
   pipelinesToCreate.push_back(_pipelineLightingRef);
+  pipelinesToCreate.push_back(_pipelineDecalsRef);
 
   PipelineLayoutManager::createResources(pipelineLayoutsToCreate);
   RenderPassManager::createResources(renderpassesToCreate);
@@ -1389,6 +1390,9 @@ void Clustering::onReinitRendering()
     DrawCallManager::resetToDefault(_drawCallDecalsRef);
     DrawCallManager::addResourceFlags(
         _drawCallDecalsRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+
+    DrawCallManager::_descPipeline(_drawCallDecalsRef) = _pipelineDecalsRef;
+    setupDecalsDrawCall(_drawCallDecalsRef);
 
     DrawCallManager::_descPipeline(_drawCallDecalsRef) = _pipelineDecalsRef;
     setupDecalsDrawCall(_drawCallDecalsRef);
