@@ -78,9 +78,9 @@ void main()
     uint packedDecalIndices = decalIndices[clusterIdx + di / 2 + 1];
 
     Decal decal = decals[packedDecalIndices & 0xFFFF];
-    calcDecal(decal, posVS, globalTextures, albedo, normal, pbr, 1.0);
+    calcDecal(decal, posVS, albedo, normal, pbr, 1.0);
     decal = decals[packedDecalIndices >> 16];
-    calcDecal(decal, posVS, globalTextures, albedo, normal, pbr,
+    calcDecal(decal, posVS, albedo, normal, pbr,
               float(di + 1 < decalCount));
   }
 
