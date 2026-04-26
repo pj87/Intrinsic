@@ -14,6 +14,8 @@
 
 #pragma once
 
+#define WIN32_LEAN_AND_MEAN
+
 // Windows includes
 #if defined(_WIN32)
 #define NOMINMAX
@@ -71,6 +73,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <chrono>
 #include <thread>
 #include <mutex>
 
@@ -92,8 +95,8 @@ extern "C" {
 #include <lualib.h>
 }
 #if !defined(_INTR_FINAL_BUILD)
-#define SOL_CHECK_ARGUMENTS
-#define SOL_SAFE_USERTYPE
+#define SOL_CHECK_ARGUMENTS 1
+#define SOL_SAFE_USERTYPE 1
 #else
 #define SOL_NO_EXCEPTIONS
 #endif // _INTR_FINAL_BUILD
