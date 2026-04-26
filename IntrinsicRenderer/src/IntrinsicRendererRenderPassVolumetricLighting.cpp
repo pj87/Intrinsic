@@ -756,7 +756,28 @@ void VolumetricLighting::init()
 
 // <-
 
-void VolumetricLighting::onReinitRendering() {}
+void VolumetricLighting::onReinitRendering()
+{
+  VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
+
+  ImageManager::insertImageMemoryBarrier(
+      initCmd, _shadowBufferExp, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  ImageManager::insertImageMemoryBarrier(
+      initCmd, _shadowBufferExpPingPong, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  ImageManager::insertImageMemoryBarrier(
+      initCmd, _volLightingBufferImageRef, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  ImageManager::insertImageMemoryBarrier(
+      initCmd, _volLightingBufferPrevFrameImageRef, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  ImageManager::insertImageMemoryBarrier(
+      initCmd, _volLightingScatteringBufferImageRef, VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+  RenderSystem::flushTemporaryCommandBuffer();
+}
 
 // <-
 
