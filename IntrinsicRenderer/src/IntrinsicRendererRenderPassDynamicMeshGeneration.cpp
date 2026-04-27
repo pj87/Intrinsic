@@ -766,30 +766,197 @@ void DynamicMeshGeneration::onReinitRendering() {}
 
 void DynamicMeshGeneration::destroy() {}
 
-static void obfuscateMesh(DynamicGeneratedMesh& mesh) {}
+static void obfuscateMesh(DynamicGeneratedMesh& mesh)
+{
+  if (mesh.renderCounter != 1)
+    return;
+
+  float* positionBufferGpuMemory =
+      (float*)BufferManager::getGpuMemory(mesh._positionBufferRef);
+
+  unsigned vertexCount = 0u;
+  const unsigned maxVertices =
+      BufferManager::_descSizeInBytes(mesh._positionBufferRef) / (sizeof(float) * 4);
+
+  for (unsigned i = 0u; i < maxVertices; ++i)
+  {
+    float x = positionBufferGpuMemory[i * 4 + 0];
+    float y = positionBufferGpuMemory[i * 4 + 1];
+    float z = positionBufferGpuMemory[i * 4 + 2];
+    if (x != 0.0f || y != 0.0f || z != 0.0f)
+      ++vertexCount;
+  }
+
+  mesh.indicesNumber = vertexCount;
+
+  // Wire the GPU-written vertex buffers into the named mesh slot so the
+  // standard draw call pipeline can bind them as vertex inputs.
+  const Name& meshName = *(mesh.meshName);
+  BufferManager::_nameToInitlialBufferMap[meshName.getString()] =
+      mesh._positionBufferRef;
+  BufferManager::_dynamicBuffers[meshName.getString()] =
+  {
+    mesh._positionBufferRef,
+    mesh._normalBufferRef,
+    mesh._binormalBufferRef,
+    mesh._tangentBufferRef,
+    mesh._uv0BufferRef,
+    mesh._colorBufferRef
+  };
+}
 
 void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef) {}
 
-void DynamicMeshGeneration::update(const Name& name, const float& p_DeltaT) {}
+void DynamicMeshGeneration::update(const Name& name, const float& p_DeltaT)
+{
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    if (*(mesh->meshName) != name)
+      continue;
 
-void DynamicMeshGeneration::update(float p_DeltaT) {}
+    mesh->params[0] += p_DeltaT * 1.0f;
+
+    if (*(mesh->meshName) == _N(explosion_ep) && mesh->params[0] > 4.0)
+      mesh->params[0] = 0.0;
+    if (*(mesh->meshName) == _N(explosion_hp) && mesh->params[0] > 6.0)
+      mesh->params[0] = 2.0;
+
+    if (mesh->isDynamic && mesh->updateCounter % 1 == 0)
+    {
+      BufferRef buffer = mesh->_noiseParametersRef;
+      updateDataMemory(mesh->params, buffer,
+                       BufferManager::_descSizeInBytes(buffer), 0);
+    }
+
+    mesh->updateCounter++;
+  }
+}
+
+void DynamicMeshGeneration::update(float p_DeltaT)
+{
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    mesh->params[0] += p_DeltaT * 1.0f;
+
+    if (*(mesh->meshName) == _N(explosion_ep) && mesh->params[0] > 4.0)
+      mesh->params[0] = 0.0;
+    if (*(mesh->meshName) == _N(explosion_hp) && mesh->params[0] > 6.0)
+      mesh->params[0] = 2.0;
+
+    if (mesh->isDynamic && mesh->updateCounter % 1 == 0)
+    {
+      BufferRef buffer = mesh->_noiseParametersRef;
+      updateDataMemory(mesh->params, buffer,
+                       BufferManager::_descSizeInBytes(buffer), 0);
+    }
+
+    mesh->updateCounter++;
+  }
+}
 
 void DynamicMeshGeneration::moveEntities(const Name& name,
                                          const float& p_DeltaT,
-                                         const float& offset) {}
+                                         const float& offset)
+{
+  static std::random_device rd;
+  static std::mt19937 mte(rd());
+  std::uniform_real_distribution<float> dist(-100.0f, 100.0f);
+  std::uniform_real_distribution<float> distCol(0.25f, 1.0f);
+  std::bernoulli_distribution d(0.5);
 
-void DynamicMeshGeneration::aquireVoxelsAndNormals(DynamicGeneratedMesh& mesh) {}
+  Entity::EntityRef entityRef = Entity::EntityManager::getEntityByName(name);
+  NodeRef nodeRef = NodeManager::getComponentForEntity(entityRef);
+  Components::MeshRef meshCompRef =
+      Components::MeshManager::getComponentForEntity(entityRef);
+  glm::vec3 size = NodeManager::getSize(nodeRef);
+
+  if (!nodeRef.isValid())
+    return;
+
+  glm::vec3 position = NodeManager::getPosition(nodeRef);
+  float offsetX = 0.0f;
+  float offsetZ = 0.0f;
+
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    if (*(mesh->meshName) == name)
+    {
+      float& time = mesh->params[0];
+      if (time > 3.4f + offset)
+      {
+        time = offset;
+        offsetX = dist(mte);
+        offsetZ = dist(mte);
+        mesh->params[1] = d(mte) ? 1.0f : -1.0f;
+        Components::MeshManager::_descColorTint(meshCompRef) =
+            glm::vec4(distCol(mte), distCol(mte), distCol(mte), 1.0f);
+      }
+      else
+      {
+        time += p_DeltaT;
+      }
+
+      position.y = (mesh->params[1] > 0.0f)
+                       ? (time - offset - 1.0f) * size.x * 5.0f
+                       : -10.0f * size.x;
+    }
+
+    BufferRef buffer = mesh->_noiseParametersRef;
+    updateDataMemory(mesh->params, buffer,
+                     BufferManager::_descSizeInBytes(buffer), 0);
+  }
+
+  position.x += offsetX;
+  position.z += offsetZ;
+
+  glm::vec3 rotation = glm::vec3(0.0f, 0.1f, 0.0f);
+  glm::quat orientation = NodeManager::getOrientation(nodeRef);
+  NodeManager::setOrientation(nodeRef, glm::rotate(orientation, rotation));
+  NodeManager::setPosition(nodeRef, position);
+  NodeManager::updateTransforms(nodeRef);
+}
+
+void DynamicMeshGeneration::aquireVoxelsAndNormals(DynamicGeneratedMesh& mesh)
+{
+  for (int x = 0; x < 64; x += 1)
+    for (int y = 0; y < 64; y += 1)
+      for (int z = 0; z < 64; z += 1)
+      {
+        float voxel  = getVoxel(mesh, x, y, z);
+        float voxel1 = getVoxel(mesh, x, y + 1, z);
+
+        if (voxel > 0.0f && voxel1 < 0.0f)
+        {
+          Voxel v;
+          v.x = static_cast<float>(x);
+          v.y = static_cast<float>(y);
+          v.z = static_cast<float>(64 - z);
+          PseudoInstancing::voxels.push_back(v);
+
+          glm::vec3 nor = getNormal(mesh, x, y + 1, z);
+          Voxel n;
+          n.x = nor.x;
+          n.y = nor.y;
+          n.z = nor.z;
+          PseudoInstancing::normals.push_back(n);
+        }
+      }
+}
 
 float DynamicMeshGeneration::getVoxel(DynamicGeneratedMesh& mesh,
                                       int x, int y, int z)
 {
-  return 0.0f;
+  int index = x * (*mesh.sizeY) * (*mesh.sizeZ) + y * (*mesh.sizeZ) + z;
+  float* buf = (float*)BufferManager::getGpuMemory(mesh._voxelBufferRef);
+  return buf[index];
 }
 
 glm::vec3 DynamicMeshGeneration::getNormal(DynamicGeneratedMesh& mesh,
                                            int x, int y, int z)
 {
-  return glm::vec3(0.0f);
+  int index = 4 * (x * (*mesh.sizeY) * (*mesh.sizeZ) + y * (*mesh.sizeZ) + z);
+  float* buf = (float*)BufferManager::getGpuMemory(mesh._voxelNormalBufferRef);
+  return glm::vec3(buf[index], buf[index + 1], buf[index + 2]);
 }
 
 } // namespace RenderPass
