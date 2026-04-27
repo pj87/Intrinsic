@@ -671,7 +671,96 @@ void DynamicMeshGeneration::init()
   RenderSystem::flushTemporaryCommandBuffer();
 }
 
-void DynamicMeshGeneration::postInit() {}
+void DynamicMeshGeneration::postInit()
+{
+  PipelineRefArray pipelinesToCreate;
+  PipelineLayoutRefArray pipelineLayoutsToCreate;
+  ComputeCallRefArray computeCallsToCreate;
+
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    // Voxel/SDF generation pipeline
+    PipelineLayoutRef pipelineLayoutVoxelGeneration =
+        PipelineLayoutManager::createPipelineLayout(_N(VoxelGeneration));
+    PipelineLayoutManager::resetToDefault(pipelineLayoutVoxelGeneration);
+    GpuProgramManager::reflectPipelineLayout(
+        1u, {GpuProgramManager::getResourceByName(*(mesh->shaders[0]))},
+        pipelineLayoutVoxelGeneration);
+    pipelineLayoutsToCreate.push_back(pipelineLayoutVoxelGeneration);
+
+    PipelineRef _pipelineVoxelGenerationRef =
+        PipelineManager::createPipeline(_N(VoxelGeneration));
+    PipelineManager::resetToDefault(_pipelineVoxelGenerationRef);
+    PipelineManager::_descComputeProgram(_pipelineVoxelGenerationRef) =
+        GpuProgramManager::getResourceByName(*(mesh->shaders[0]));
+    PipelineManager::_descPipelineLayout(_pipelineVoxelGenerationRef) =
+        pipelineLayoutVoxelGeneration;
+    mesh->_pipelineVoxelGenerationRef = _pipelineVoxelGenerationRef;
+    pipelinesToCreate.push_back(_pipelineVoxelGenerationRef);
+
+    // Normal generation pipeline
+    PipelineLayoutRef pipelineLayoutNormal =
+        PipelineLayoutManager::createPipelineLayout(_N(NormalGeneration));
+    PipelineLayoutManager::resetToDefault(pipelineLayoutNormal);
+    GpuProgramManager::reflectPipelineLayout(
+        1u, {GpuProgramManager::getResourceByName(*(mesh->shaders[1]))},
+        pipelineLayoutNormal);
+    pipelineLayoutsToCreate.push_back(pipelineLayoutNormal);
+
+    PipelineRef _pipelineNormalRef =
+        PipelineManager::createPipeline(_N(NormalGeneration));
+    PipelineManager::resetToDefault(_pipelineNormalRef);
+    PipelineManager::_descComputeProgram(_pipelineNormalRef) =
+        GpuProgramManager::getResourceByName(*(mesh->shaders[1]));
+    PipelineManager::_descPipelineLayout(_pipelineNormalRef) = pipelineLayoutNormal;
+    mesh->_pipelineNormalRef = _pipelineNormalRef;
+    pipelinesToCreate.push_back(_pipelineNormalRef);
+
+    // Polygonization (marching cubes) pipeline
+    PipelineLayoutRef pipelineLayoutPolygonization =
+        PipelineLayoutManager::createPipelineLayout(_N(DynamicMeshGeneration));
+    PipelineLayoutManager::resetToDefault(pipelineLayoutPolygonization);
+    GpuProgramManager::reflectPipelineLayout(
+        1u, {GpuProgramManager::getResourceByName(*(mesh->shaders[2]))},
+        pipelineLayoutPolygonization);
+    pipelineLayoutsToCreate.push_back(pipelineLayoutPolygonization);
+
+    PipelineRef _pipelinePolygonizationRef =
+        PipelineManager::createPipeline(_N(DynamicMeshGeneration));
+    PipelineManager::resetToDefault(_pipelinePolygonizationRef);
+    PipelineManager::_descComputeProgram(_pipelinePolygonizationRef) =
+        GpuProgramManager::getResourceByName(*(mesh->shaders[2]));
+    PipelineManager::_descPipelineLayout(_pipelinePolygonizationRef) =
+        pipelineLayoutPolygonization;
+    mesh->_pipelinePolygonizationRef = _pipelinePolygonizationRef;
+    pipelinesToCreate.push_back(_pipelinePolygonizationRef);
+
+    PipelineLayoutManager::createResources(pipelineLayoutsToCreate);
+    PipelineManager::createResources(pipelinesToCreate);
+
+    const glm::uvec3 computeDim = glm::uvec3(
+        sqrt(mesh->sizes[0]), sqrt(mesh->sizes[1]), sqrt(mesh->sizes[2]));
+
+    ComputeCallRef _computeCallVoxelGenerationRef =
+        createComputeCallVoxelGeneration(mesh, computeDim);
+    mesh->_computeCallVoxelGenerationRef = _computeCallVoxelGenerationRef;
+    computeCallsToCreate.push_back(_computeCallVoxelGenerationRef);
+
+    ComputeCallRef _computeCallNormalRef =
+        createComputeCallNormal(mesh, computeDim);
+    mesh->_computeCallNormalRef = _computeCallNormalRef;
+    computeCallsToCreate.push_back(_computeCallNormalRef);
+
+    ComputeCallRef _computeCallMarchingCubesRef =
+        createComputeCallPolygonization(mesh, computeDim);
+    mesh->_computeCallMarchingCubesRef = _computeCallMarchingCubesRef;
+    computeCallsToCreate.push_back(_computeCallMarchingCubesRef);
+  }
+
+  PipelineLayoutManager::createResources(pipelineLayoutsToCreate);
+  PipelineManager::createResources(pipelinesToCreate);
+  ComputeCallManager::createResources(computeCallsToCreate);
+}
 
 void DynamicMeshGeneration::onReinitRendering() {}
 
