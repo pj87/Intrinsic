@@ -805,7 +805,82 @@ static void obfuscateMesh(DynamicGeneratedMesh& mesh)
   };
 }
 
-void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef) {}
+void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
+{
+  _INTR_PROFILE_CPU("Render Pass", "Render Dynamic Mesh Generation");
+  _INTR_PROFILE_GPU("Dynamic Mesh Generation");
+
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    if (!mesh->isDynamic && mesh->isCalled && mesh->renderCounter > 2)
+      continue;
+
+    VkCommandBuffer primaryCmdBuffer = RenderSystem::getPrimaryCommandBuffer();
+
+    if (mesh->isCalled)
+    {
+      ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
+          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    }
+
+    // Stage 1: compute normals into the normals image (GENERAL→GENERAL self-barrier)
+    RenderSystem::dispatchComputeCall(mesh->_computeCallNormalRef, primaryCmdBuffer);
+
+    ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    // Stage 2: fill the voxel SDF field
+    RenderSystem::dispatchComputeCall(mesh->_computeCallVoxelGenerationRef,
+                                      primaryCmdBuffer);
+
+    BufferManager::insertBufferMemoryBarrier(mesh->_voxelBufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    BufferManager::insertBufferMemoryBarrier(mesh->_voxelNormalBufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    // Stage 3: polygonize with marching cubes → writes vertex attribute buffers
+    RenderSystem::dispatchComputeCall(mesh->_computeCallMarchingCubesRef,
+                                      primaryCmdBuffer);
+
+    BufferManager::insertBufferMemoryBarrier(mesh->_positionBufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+    BufferManager::insertBufferMemoryBarrier(mesh->_normalBufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+    BufferManager::insertBufferMemoryBarrier(mesh->_binormalBufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+    BufferManager::insertBufferMemoryBarrier(mesh->_tangentBufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+    BufferManager::insertBufferMemoryBarrier(mesh->_uv0BufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+    BufferManager::insertBufferMemoryBarrier(mesh->_colorBufferRef,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+
+    obfuscateMesh(*mesh);
+
+    mesh->isCalled = true;
+    mesh->renderCounter++;
+
+    const Name& name = *(mesh->meshName);
+
+    if (name != _N(terrain_generated))
+      continue;
+
+    PseudoInstancing::generateInstances();
+  }
+}
 
 void DynamicMeshGeneration::update(const Name& name, const float& p_DeltaT)
 {
