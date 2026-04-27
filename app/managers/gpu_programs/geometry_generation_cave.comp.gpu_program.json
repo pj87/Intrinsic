@@ -1,0 +1,10 @@
+{
+    "name": "geometry_generation_cave.comp",
+    "properties": {
+        "name": "geometry_generation_cave.comp",
+        "gpuProgramName": "generated/geometry_generation_cave.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

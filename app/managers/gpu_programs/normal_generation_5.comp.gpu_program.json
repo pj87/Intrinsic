@@ -1,0 +1,10 @@
+{
+    "name": "normal_generation_5.comp",
+    "properties": {
+        "name": "normal_generation_5.comp",
+        "gpuProgramName": "generated/normal_generation_5.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

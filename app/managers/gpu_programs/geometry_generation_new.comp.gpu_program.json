@@ -1,0 +1,10 @@
+{
+    "name": "geometry_generation_new.comp",
+    "properties": {
+        "name": "geometry_generation_new.comp",
+        "gpuProgramName": "generated/geometry_generation_new.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}
