@@ -1,0 +1,10 @@
+{
+    "name": "texture_bricks_generation.comp",
+    "properties": {
+        "name": "texture_bricks_generation.comp",
+        "gpuProgramName": "textures/texture_bricks_generation.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

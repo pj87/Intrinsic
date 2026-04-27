@@ -1,0 +1,10 @@
+{
+    "name": "texture_warping_generation_1.comp",
+    "properties": {
+        "name": "texture_warping_generation_1.comp",
+        "gpuProgramName": "textures/texture_warping_generation_1.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

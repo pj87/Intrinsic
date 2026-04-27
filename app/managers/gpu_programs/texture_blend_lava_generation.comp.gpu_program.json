@@ -1,0 +1,10 @@
+{
+    "name": "texture_blend_lava_generation.comp",
+    "properties": {
+        "name": "texture_blend_lava_generation.comp",
+        "gpuProgramName": "textures/texture_blend_lava_generation.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}
