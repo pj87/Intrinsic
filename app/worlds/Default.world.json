@@ -15697,5 +15697,101 @@
                 }
             }
         ]
+    },
+    {
+        "name": "Temple",
+        "offsetToParent": -1,
+        "propertyEntries": [
+            {
+                "type": "Node",
+                "properties": {
+                    "localPos": [0.0, 0.0, 0.0],
+                    "localOrient": [0.0, 0.0, 0.0, 1.0],
+                    "localSize": [1.0, 1.0, 1.0],
+                    "worldPos": [0.0, 0.0, 0.0],
+                    "worldOrient": [0.0, 0.0, 0.0, 1.0],
+                    "worldSize": [1.0, 1.0, 1.0]
+                }
+            },
+            {
+                "type": "Mesh",
+                "properties": {
+                    "meshName": "Temple",
+                    "colorTint": [1.0, 1.0, 1.0, 1.0]
+                }
+            }
+        ]
+    },
+    {
+        "name": "Mandelbulb",
+        "offsetToParent": -1,
+        "propertyEntries": [
+            {
+                "type": "Node",
+                "properties": {
+                    "localPos": [0.0, 0.0, 0.0],
+                    "localOrient": [0.0, 0.0, 0.0, 1.0],
+                    "localSize": [1.0, 1.0, 1.0],
+                    "worldPos": [0.0, 0.0, 0.0],
+                    "worldOrient": [0.0, 0.0, 0.0, 1.0],
+                    "worldSize": [1.0, 1.0, 1.0]
+                }
+            },
+            {
+                "type": "Mesh",
+                "properties": {
+                    "meshName": "Mandelbulb",
+                    "colorTint": [1.0, 1.0, 1.0, 1.0]
+                }
+            }
+        ]
+    },
+    {
+        "name": "Julia",
+        "offsetToParent": -1,
+        "propertyEntries": [
+            {
+                "type": "Node",
+                "properties": {
+                    "localPos": [0.0, 0.0, 0.0],
+                    "localOrient": [0.0, 0.0, 0.0, 1.0],
+                    "localSize": [1.0, 1.0, 1.0],
+                    "worldPos": [0.0, 0.0, 0.0],
+                    "worldOrient": [0.0, 0.0, 0.0, 1.0],
+                    "worldSize": [1.0, 1.0, 1.0]
+                }
+            },
+            {
+                "type": "Mesh",
+                "properties": {
+                    "meshName": "Julia",
+                    "colorTint": [1.0, 1.0, 1.0, 1.0]
+                }
+            }
+        ]
+    },
+    {
+        "name": "ProceduralHouse",
+        "offsetToParent": -1,
+        "propertyEntries": [
+            {
+                "type": "Node",
+                "properties": {
+                    "localPos": [0.0, 0.0, 0.0],
+                    "localOrient": [0.0, 0.0, 0.0, 1.0],
+                    "localSize": [1.0, 1.0, 1.0],
+                    "worldPos": [0.0, 0.0, 0.0],
+                    "worldOrient": [0.0, 0.0, 0.0, 1.0],
+                    "worldSize": [1.0, 1.0, 1.0]
+                }
+            },
+            {
+                "type": "Mesh",
+                "properties": {
+                    "meshName": "ProceduralHouse",
+                    "colorTint": [1.0, 1.0, 1.0, 1.0]
+                }
+            }
+        ]
     }
 ]

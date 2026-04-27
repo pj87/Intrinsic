@@ -178,7 +178,23 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
 
     RenderPass::Clustering::init();
     RenderPass::VolumetricLighting::init();
+    
+    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
+        64, 64, 64, _N(Temple), "temple_ruins.comp", "normal_generation.comp",
+        "geometry_generation_new.comp", false);
 
+    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
+        36, 36, 36, _N(Mandelbulb), "mandelbulb.comp", "normal_generation_6.comp",
+        "geometry_generation_new_6.comp", false);
+
+    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
+        36, 36, 36, _N(Julia), "julia.comp", "normal_generation_6.comp",
+        "geometry_generation_new_6.comp", false);
+
+    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
+        64, 64, 64, _N(ProceduralHouse), "houses.comp", "normal_generation.comp",
+        "geometry_generation_new.comp", false);
+    
     RenderPass::Bloom::init();
 
     RenderPass::Debug::init();
@@ -679,6 +695,8 @@ void RenderSystem::initVkDevice()
 
   // Check if debug marker extension is supported
   bool debugMarkerExtPresent = false;
+  bool debugReportExtPresent = false;
+  bool maintenance2ExtPresent = false;
   {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(_vkPhysicalDevice, nullptr,
@@ -697,14 +715,28 @@ void RenderSystem::initVkDevice()
         _INTR_LOG_INFO("Enabling debug markers...");
         debugMarkerExtPresent = true;
       }
+      if (strcmp(ext.extensionName, VK_EXT_DEBUG_REPORT_EXTENSION_NAME) == 0u)
+        debugReportExtPresent = true;
+      if (strcmp(ext.extensionName, VK_KHR_MAINTENANCE2_EXTENSION_NAME) == 0u)
+        maintenance2ExtPresent = true;
     }
+
+    if (debugMarkerExtPresent && debugReportExtPresent)
+      _INTR_LOG_INFO("Enabling debug markers...");
+    else
+      debugMarkerExtPresent = false;
   }
 
   _INTR_ARRAY(const char*) enabledExtensions;
   {
     enabledExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     if (debugMarkerExtPresent)
+    {
+      enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
       enabledExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+    }
+    if (maintenance2ExtPresent)
+      enabledExtensions.push_back(VK_KHR_MAINTENANCE2_EXTENSION_NAME);
   }
 
   _INTR_ARRAY(const char*) enabledLayers;
