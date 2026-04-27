@@ -145,7 +145,76 @@ void DynamicTextureGeneration::init()
   RenderSystem::flushTemporaryCommandBuffer();
 }
 
-void DynamicTextureGeneration::postInit() {}
+void DynamicTextureGeneration::postInit()
+{
+  PipelineRefArray pipelinesToCreate;
+  PipelineLayoutRefArray pipelineLayoutsToCreate;
+  ComputeCallRefArray computeCallsToCreate;
+
+  for (auto& texture : dynamicGenerationTextures)
+  {
+    PipelineLayoutRef pipelineLayoutTexture;
+    {
+      pipelineLayoutTexture =
+          PipelineLayoutManager::createPipelineLayout(_N(TextureGeneration));
+      PipelineLayoutManager::resetToDefault(pipelineLayoutTexture);
+
+      GpuProgramManager::reflectPipelineLayout(
+          1u, {GpuProgramManager::getResourceByName(*(texture->shaders[0]))},
+          pipelineLayoutTexture);
+      pipelineLayoutsToCreate.push_back(pipelineLayoutTexture);
+    }
+
+    {
+      PipelineRef _pipelineTextureRef =
+          PipelineManager::createPipeline(_N(TextureGeneration));
+      PipelineManager::resetToDefault(_pipelineTextureRef);
+      PipelineManager::_descComputeProgram(_pipelineTextureRef) =
+          GpuProgramManager::getResourceByName(*(texture->shaders[0]));
+      PipelineManager::_descPipelineLayout(_pipelineTextureRef) =
+          pipelineLayoutTexture;
+      texture->_pipelineTextureRef = _pipelineTextureRef;
+      pipelinesToCreate.push_back(_pipelineTextureRef);
+    }
+
+    const glm::uvec3 computeDim =
+		glm::uvec3(texture->sizes[0], texture->sizes[1], texture->sizes[2]);
+
+    ComputeCallRef _computeCallTextureRef =
+        ComputeCallManager::createComputeCall(_N(TextureGeneration));
+    {
+      ComputeCallManager::resetToDefault(_computeCallTextureRef);
+      ComputeCallManager::addResourceFlags(
+          _computeCallTextureRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      ComputeCallManager::_descDimensions(_computeCallTextureRef) =
+          glm::uvec3(computeDim);
+      ComputeCallManager::_descPipeline(_computeCallTextureRef) =
+          texture->_pipelineTextureRef;
+
+	  if (texture->hasSourceTex)
+	  {
+		  ComputeCallManager::bindImage(
+			  _computeCallTextureRef, _N(_SourceTex), GpuProgramType::kCompute,
+			  texture->_textureSourceRef, Samplers::kNearestRepeat);
+	  }
+
+      ComputeCallManager::bindImage(
+          _computeCallTextureRef, _N(_TextureTex), GpuProgramType::kCompute,
+          texture->_textureImageRef, Samplers::kNearestRepeat);
+      ComputeCallManager::bindBuffer(
+          _computeCallTextureRef, _N(_ParametersBuffer),
+          GpuProgramType::kCompute, texture->_noiseParametersRef,
+          UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(texture->_noiseParametersRef));
+    }
+    texture->_computeCallTextureRef = _computeCallTextureRef;
+    computeCallsToCreate.push_back(_computeCallTextureRef);
+  }
+
+  PipelineLayoutManager::createResources(pipelineLayoutsToCreate);
+  PipelineManager::createResources(pipelinesToCreate);
+  ComputeCallManager::createResources(computeCallsToCreate);
+}
 
 void DynamicTextureGeneration::onReinitRendering()
 {
