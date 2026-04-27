@@ -1,0 +1,10 @@
+{
+    "name": "terrain_generated1.comp",
+    "properties": {
+        "name": "terrain_generated1.comp",
+        "gpuProgramName": "meshes/terrain_generated1.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

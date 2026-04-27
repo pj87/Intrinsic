@@ -1,0 +1,10 @@
+{
+    "name": "explosion1.comp",
+    "properties": {
+        "name": "explosion1.comp",
+        "gpuProgramName": "meshes/explosion1.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

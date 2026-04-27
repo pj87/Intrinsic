@@ -1,0 +1,10 @@
+{
+    "name": "cathedral.comp",
+    "properties": {
+        "name": "cathedral.comp",
+        "gpuProgramName": "meshes/cathedral.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

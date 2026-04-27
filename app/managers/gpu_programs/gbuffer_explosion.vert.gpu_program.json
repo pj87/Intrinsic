@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_explosion.vert",
+    "properties": {
+        "name": "gbuffer_explosion.vert",
+        "gpuProgramName": "gbuffer_explosion.vert.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 0
+    }
+}

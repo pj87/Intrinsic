@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_skyscrapers.frag",
+    "properties": {
+        "name": "gbuffer_skyscrapers.frag",
+        "gpuProgramName": "gbuffer_skyscrapers.frag.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 1
+    }
+}

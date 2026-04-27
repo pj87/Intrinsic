@@ -1,0 +1,10 @@
+{
+    "name": "skyscrapers.comp",
+    "properties": {
+        "name": "skyscrapers.comp",
+        "gpuProgramName": "meshes/skyscrapers.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

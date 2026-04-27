@@ -1,0 +1,10 @@
+{
+    "name": "terrain_tatooine_generated.comp",
+    "properties": {
+        "name": "terrain_tatooine_generated.comp",
+        "gpuProgramName": "meshes/terrain_tatooine_generated.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

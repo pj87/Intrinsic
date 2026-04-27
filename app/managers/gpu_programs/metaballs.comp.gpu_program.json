@@ -1,0 +1,10 @@
+{
+    "name": "metaballs.comp",
+    "properties": {
+        "name": "metaballs.comp",
+        "gpuProgramName": "meshes/metaballs.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

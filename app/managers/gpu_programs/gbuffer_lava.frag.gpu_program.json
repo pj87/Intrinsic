@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_lava.frag",
+    "properties": {
+        "name": "gbuffer_lava.frag",
+        "gpuProgramName": "gbuffer_lava.frag.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 1
+    }
+}
