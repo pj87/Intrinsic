@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_temple.frag",
+    "properties": {
+        "name": "gbuffer_temple.frag",
+        "gpuProgramName": "gbuffer_temple.frag.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 1
+    }
+}
