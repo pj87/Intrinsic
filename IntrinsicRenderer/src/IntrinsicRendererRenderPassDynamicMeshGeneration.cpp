@@ -32,7 +32,7 @@ namespace
   // clang-format off
   // Lookup table: which edges of a cube are intersected by the isosurface,
   // indexed by the 8-bit vertex sign pattern (256 entries).
-  static const int cubeEdgeFlags[256] = {
+  static int cubeEdgeFlags[256] = {
     0x000, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
     0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
     0x190, 0x099, 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -69,7 +69,7 @@ namespace
 
   // Lookup table: triangle vertex indices per cube configuration.
   // 16 ints per entry (4096 total); -1 terminates the triangle list.
-  static const int triangleConnectionTable[4096] = {
+  static int triangleConnectionTable[4096] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
     0,8,3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
     0,1,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -792,9 +792,8 @@ static void obfuscateMesh(DynamicGeneratedMesh& mesh)
   // Wire the GPU-written vertex buffers into the named mesh slot so the
   // standard draw call pipeline can bind them as vertex inputs.
   const Name& meshName = *(mesh.meshName);
-  BufferManager::_nameToInitlialBufferMap[meshName.getString()] =
-      mesh._positionBufferRef;
-  BufferManager::_dynamicBuffers[meshName.getString()] =
+  BufferManager::_nameToInitlialBufferMap[meshName] = mesh._positionBufferRef;
+  BufferManager::_dynamicBuffers[meshName] =
   {
     mesh._positionBufferRef,
     mesh._normalBufferRef,

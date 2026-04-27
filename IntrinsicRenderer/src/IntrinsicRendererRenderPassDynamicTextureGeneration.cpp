@@ -119,8 +119,7 @@ void DynamicTextureGeneration::init()
       ImageManager::_descDimensions(_textureImageRef) =
           glm::uvec3((unsigned)*(texture->sizeX), (unsigned)*(texture->sizeY), 1);
       ImageManager::_descMipLevelCount(_textureImageRef) = 1u;
-	  ImageManager::_descImageFormat(_textureImageRef) =
-		  Format::kR8G8B8A8UNorm;
+	  ImageManager::_descImageFormat(_textureImageRef) = Format::kB8G8R8A8UNorm;
       ImageManager::_descImageType(_textureImageRef) =
 		  ImageType::kTexture;
       ImageManager::_descImageFlags(_textureImageRef) =
