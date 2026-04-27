@@ -77,11 +77,91 @@ bool DynamicTextureGeneration::isOverridenTexture(const Name& textureName)
   return false;
 }
 
-void DynamicTextureGeneration::init() {}
+void DynamicTextureGeneration::init()
+{
+  BufferRefArray buffersToCreate;
+  ImageRefArray imgsToCreate;
+
+  for (auto& texture : dynamicGenerationTextures)
+  {
+    BufferRef _noiseParametersRef =
+        BufferManager::createBuffer(_N(_ParametersBuffer));
+    {
+      BufferManager::resetToDefault(_noiseParametersRef);
+      BufferManager::addResourceFlags(
+          _noiseParametersRef,
+          Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descBufferType(_noiseParametersRef) =
+          BufferType::kStorage;
+      BufferManager::_descMemoryPoolType(_noiseParametersRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descSizeInBytes(_noiseParametersRef) =
+          sizeof(noiseParams);
+      BufferManager::_descInitialData(_noiseParametersRef) = noiseParams;
+	}
+    texture->_noiseParametersRef = _noiseParametersRef;
+    buffersToCreate.push_back(_noiseParametersRef);
+
+	if (texture->hasSourceTex)
+	{
+		ImageRef _textureSourceRef =
+			ImageManager::getResourceByName(*texture->textureSourceName);
+		texture->_textureSourceRef = _textureSourceRef;
+	}
+
+    ImageRef _textureImageRef =
+        ImageManager::createImage(*texture->textureName);
+    {
+      ImageManager::resetToDefault(_textureImageRef);
+      ImageManager::addResourceFlags(
+          _textureImageRef,
+		  Dod::Resources::ResourceFlags::kResourceVolatile);
+      ImageManager::_descDimensions(_textureImageRef) =
+          glm::uvec3((unsigned)*(texture->sizeX), (unsigned)*(texture->sizeY), 1);
+      ImageManager::_descMipLevelCount(_textureImageRef) = 1u;
+	  ImageManager::_descImageFormat(_textureImageRef) =
+		  Format::kR8G8B8A8UNorm;
+      ImageManager::_descImageType(_textureImageRef) =
+		  ImageType::kTexture;
+      ImageManager::_descImageFlags(_textureImageRef) =
+          ImageFlags::kUsageSampled | ImageFlags::kUsageStorage;
+    }
+    texture->_textureImageRef = _textureImageRef;
+    imgsToCreate.push_back(_textureImageRef);
+  }
+
+  ImageManager::createResources(imgsToCreate);
+  BufferManager::createResources(buffersToCreate);
+
+  // Transition generated textures from UNDEFINED to GENERAL for first compute dispatch
+  VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
+  for (auto& texture : dynamicGenerationTextures)
+  {
+    ImageManager::insertImageMemoryBarrier(
+        initCmd, texture->_textureImageRef,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+  }
+  RenderSystem::flushTemporaryCommandBuffer();
+}
 
 void DynamicTextureGeneration::postInit() {}
 
-void DynamicTextureGeneration::onReinitRendering() {}
+void DynamicTextureGeneration::onReinitRendering()
+{
+  VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
+  for (auto& texture : dynamicGenerationTextures)
+  {
+    ImageManager::insertImageMemoryBarrier(
+        initCmd, texture->_textureImageRef,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    texture->isCalled = true;
+    texture->counter = 0;
+  }
+  RenderSystem::flushTemporaryCommandBuffer();
+}
 
 void DynamicTextureGeneration::destroy() {}
 
