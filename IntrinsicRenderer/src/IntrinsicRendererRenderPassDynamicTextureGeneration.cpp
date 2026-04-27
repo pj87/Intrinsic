@@ -234,7 +234,71 @@ void DynamicTextureGeneration::onReinitRendering()
 
 void DynamicTextureGeneration::destroy() {}
 
-void DynamicTextureGeneration::render(float p_DeltaT, CameraRef p_CameraRef) {}
+// <-
+
+_INTR_INLINE static void updateDataMemory(void* p_Data, BufferRef bufferRef,
+                                          uint32_t p_Size, uint32_t p_Offset)
+{
+  memcpy((uint8_t*)BufferManager::getGpuMemory(bufferRef) + p_Offset, p_Data,
+         p_Size);
+}
+
+void DynamicTextureGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
+{
+  _INTR_PROFILE_CPU("Render Pass", "Render Dynamic Geometry Generation");
+  _INTR_PROFILE_GPU("Dynamic Geometry Generation");
+
+  noiseParams[0] += p_DeltaT * 0.1f;
+
+  for (auto& texture : dynamicGenerationTextures)
+  {
+    if (texture->isDynamic)
+	{
+      BufferRef buffer = texture->_noiseParametersRef;
+      updateDataMemory(noiseParams, buffer,
+                       BufferManager::_descSizeInBytes(buffer), 0);
+	}
+	else
+	{
+	  if (texture->isCalled && texture->counter > 2)
+		continue;
+	}
+
+    VkCommandBuffer primaryCmdBuffer = RenderSystem::getPrimaryCommandBuffer();
+
+    ImageManager::insertImageMemoryBarrier(texture->_textureImageRef,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    if (texture->hasSourceTex)
+    {
+      ImageManager::insertImageMemoryBarrier(texture->_textureSourceRef,
+          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    }
+
+    RenderSystem::dispatchComputeCall(texture->_computeCallTextureRef,
+                                      primaryCmdBuffer);
+
+    ImageManager::insertImageMemoryBarrier(texture->_textureImageRef,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    if (texture->hasSourceTex)
+    {
+      ImageManager::insertImageMemoryBarrier(texture->_textureSourceRef,
+          VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    }
+
+    texture->isCalled = true;
+    texture->counter++;
+  }
+}
 
 } // namespace RenderPass
 } // namespace Renderer
