@@ -14,6 +14,19 @@
 
 #pragma once
 
+// Forward declaration
+namespace Intrinsic
+{
+namespace Renderer
+{
+namespace Resources
+{
+typedef Dod::Ref BufferRef;
+typedef _INTR_ARRAY(BufferRef) BufferRefArray;
+} // namespace Resources
+} // namespace Renderer
+} // namespace Intrinsic
+
 namespace Intrinsic
 {
 namespace Core
@@ -137,6 +150,8 @@ struct ResourceManagerBase : Dod::ManagerBase<IdCount, DataType>
   static _INTR_HASH_MAP(Name, Ref) _nameResourceMap;
   static DataType _data;
   static Name _defaultResourceName;
+  static _INTR_HASH_MAP(Name, Intrinsic::Renderer::Resources::BufferRefArray) _dynamicBuffers;
+  static _INTR_HASH_MAP(Name, Intrinsic::Renderer::Resources::BufferRef) _nameToInitlialBufferMap;
 
 protected:
   _INTR_INLINE static void _initResourceManager()
@@ -475,6 +490,12 @@ _INTR_HASH_MAP(Name, Ref)
 ResourceManagerBase<DataType, IdCount>::_nameResourceMap;
 template <class DataType, uint32_t IdCount>
 Name ResourceManagerBase<DataType, IdCount>::_defaultResourceName;
+template <class DataType, uint32_t IdCount>
+_INTR_HASH_MAP(Name, Intrinsic::Renderer::Resources::BufferRefArray)
+ResourceManagerBase<DataType, IdCount>::_dynamicBuffers;
+template <class DataType, uint32_t IdCount>
+_INTR_HASH_MAP(Name, Intrinsic::Renderer::Resources::BufferRef)
+ResourceManagerBase<DataType, IdCount>::_nameToInitlialBufferMap;
 }
 }
 }

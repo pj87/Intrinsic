@@ -141,6 +141,8 @@ struct BufferManager
   // <-
 
   static void createResources(const BufferRefArray& p_Buffers);
+  static void updateResources(const BufferRef& bufferRef,
+                              const void* initialData); // PJ: Added
 
   // <-
 
