@@ -505,7 +505,171 @@ unsigned DynamicMeshGeneration::getIndicesNumber(const Name& meshName)
   return 0u;
 }
 
-void DynamicMeshGeneration::init() {}
+void DynamicMeshGeneration::init()
+{
+  BufferRefArray buffersToCreate;
+  ImageRefArray imgsToCreate;
+
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    BufferRef _noiseParametersRef =
+        BufferManager::createBuffer(_N(_ParametersBuffer));
+    {
+      BufferManager::resetToDefault(_noiseParametersRef);
+      BufferManager::addResourceFlags(
+          _noiseParametersRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descBufferType(_noiseParametersRef) = BufferType::kStorage;
+      BufferManager::_descMemoryPoolType(_noiseParametersRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descSizeInBytes(_noiseParametersRef) = sizeof(mesh->params);
+      BufferManager::_descInitialData(_noiseParametersRef) = mesh->params;
+    }
+    mesh->_noiseParametersRef = _noiseParametersRef;
+    buffersToCreate.push_back(_noiseParametersRef);
+
+    BufferRef _voxelBufferRef = BufferManager::createBuffer(_N(_Voxels));
+    {
+      BufferManager::resetToDefault(_voxelBufferRef);
+      BufferManager::addResourceFlags(
+          _voxelBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_voxelBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_voxelBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_voxelBufferRef) =
+          (*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ) * sizeof(float);
+    }
+    mesh->_voxelBufferRef = _voxelBufferRef;
+    buffersToCreate.push_back(_voxelBufferRef);
+
+    BufferRef _voxelNormalBufferRef =
+        BufferManager::createBuffer(_N(_VoxelNormals));
+    {
+      BufferManager::resetToDefault(_voxelNormalBufferRef);
+      BufferManager::addResourceFlags(
+          _voxelNormalBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_voxelNormalBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_voxelNormalBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_voxelNormalBufferRef) =
+          (*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ) * sizeof(float) * 4;
+    }
+    mesh->_voxelNormalBufferRef = _voxelNormalBufferRef;
+    buffersToCreate.push_back(_voxelNormalBufferRef);
+
+    BufferRef _sizesBufferRef = BufferManager::createBuffer(_N(_SizeBuffer));
+    {
+      BufferManager::resetToDefault(_sizesBufferRef);
+      BufferManager::addResourceFlags(
+          _sizesBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descBufferType(_sizesBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_sizesBufferRef) = sizeof(mesh->sizes);
+      BufferManager::_descInitialData(_sizesBufferRef) = mesh->sizes;
+    }
+    mesh->_sizesBufferRef = _sizesBufferRef;
+    buffersToCreate.push_back(_sizesBufferRef);
+
+    BufferRef _targetBufferRef = BufferManager::createBuffer(_N(_TargetBuffer));
+    {
+      BufferManager::resetToDefault(_targetBufferRef);
+      BufferManager::addResourceFlags(
+          _targetBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descBufferType(_targetBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_targetBufferRef) = sizeof(float);
+      BufferManager::_descInitialData(_targetBufferRef) = &target;
+    }
+    mesh->_targetBufferRef = _targetBufferRef;
+    buffersToCreate.push_back(_targetBufferRef);
+
+    BufferRef _cubeEdgeFlagsBufferRef =
+        BufferManager::createBuffer(_N(_CubeEdgeFlags));
+    {
+      BufferManager::resetToDefault(_cubeEdgeFlagsBufferRef);
+      BufferManager::addResourceFlags(
+          _cubeEdgeFlagsBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_cubeEdgeFlagsBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_cubeEdgeFlagsBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_cubeEdgeFlagsBufferRef) = sizeof(cubeEdgeFlags);
+      BufferManager::_descInitialData(_cubeEdgeFlagsBufferRef) = cubeEdgeFlags;
+    }
+    mesh->_cubeEdgeFlagsBufferRef = _cubeEdgeFlagsBufferRef;
+    buffersToCreate.push_back(_cubeEdgeFlagsBufferRef);
+
+    BufferRef _triangleConnectionBufferRef =
+        BufferManager::createBuffer(_N(_TriangleConnectionTable));
+    {
+      BufferManager::resetToDefault(_triangleConnectionBufferRef);
+      BufferManager::addResourceFlags(
+          _triangleConnectionBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descBufferType(_triangleConnectionBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_triangleConnectionBufferRef) =
+          sizeof(triangleConnectionTable);
+      BufferManager::_descInitialData(_triangleConnectionBufferRef) = triangleConnectionTable;
+    }
+    mesh->_triangleConnectionBufferRef = _triangleConnectionBufferRef;
+    buffersToCreate.push_back(_triangleConnectionBufferRef);
+
+    BufferRef _debugBufferRef = BufferManager::createBuffer(_N(_DebugBuffer));
+    {
+      BufferManager::resetToDefault(_debugBufferRef);
+      BufferManager::addResourceFlags(
+          _debugBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descBufferType(_debugBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_debugBufferRef) = 150000 * 8 * sizeof(float);
+    }
+    mesh->_debugBufferRef = _debugBufferRef;
+    buffersToCreate.push_back(_debugBufferRef);
+
+    // Pre-existing noise/permutation images referenced by the voxel generation shader
+    mesh->_gradient3dImageRef =
+        ImageManager::getResourceByName(_N(gradient3d));
+    mesh->_permTable2dImageRef =
+        ImageManager::getResourceByName(_N(perm_table2d));
+
+    ImageRef _normalsImageRef = ImageManager::createImage(_N(normalsTex));
+    {
+      ImageManager::resetToDefault(_normalsImageRef);
+      ImageManager::addResourceFlags(
+          _normalsImageRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+
+      // Fractal meshes use the full grid dimension; terrain-derived meshes use
+      // sqrt(dim) because the normal compute dispatch is arranged differently.
+      const Name& name = *(mesh->meshName);
+      if (name != _N(pbr_test_0125) && name != _N(pbr_test_025) &&
+          name != _N(house) && name != _N(skyscrapers) &&
+          name != _N(village_houses) && name != _N(terrain_lava))
+      {
+        ImageManager::_descDimensions(_normalsImageRef) = glm::uvec3(
+            sqrt(mesh->sizes[0]), sqrt(mesh->sizes[1]), sqrt(mesh->sizes[2]));
+      }
+      else
+      {
+        ImageManager::_descDimensions(_normalsImageRef) =
+            glm::uvec3(mesh->sizes[0], mesh->sizes[1], mesh->sizes[2]);
+      }
+      ImageManager::_descImageFormat(_normalsImageRef) = Format::kR16G16B16A16Float;
+      ImageManager::_descImageType(_normalsImageRef) = ImageType::kTexture;
+      ImageManager::_descImageFlags(_normalsImageRef) =
+          ImageFlags::kUsageSampled | ImageFlags::kUsageStorage;
+    }
+    mesh->_normalsImageRef = _normalsImageRef;
+    imgsToCreate.push_back(_normalsImageRef);
+  }
+
+  BufferManager::createResources(buffersToCreate);
+  ImageManager::createResources(imgsToCreate);
+
+  // Transition normals images UNDEFINED→GENERAL for the first compute dispatch
+  VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    ImageManager::insertImageMemoryBarrier(
+        initCmd, mesh->_normalsImageRef,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+  }
+  RenderSystem::flushTemporaryCommandBuffer();
+}
 
 void DynamicMeshGeneration::postInit() {}
 
