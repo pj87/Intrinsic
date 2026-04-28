@@ -620,6 +620,94 @@ void DynamicMeshGeneration::init()
     mesh->_debugBufferRef = _debugBufferRef;
     buffersToCreate.push_back(_debugBufferRef);
 
+    // Vertex attribute output buffers written by the polygonization compute shader.
+    // Each slot holds up to 1 vertex; each voxel cube contributes up to 15 slots.
+    const uint32_t maxSlots =
+        (uint32_t)((*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ)) * 15u;
+
+    BufferRef _positionBufferRef = BufferManager::createBuffer(_N(_PositionBuffer));
+    {
+      BufferManager::resetToDefault(_positionBufferRef);
+      BufferManager::addResourceFlags(
+          _positionBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_positionBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_positionBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_positionBufferRef) =
+          maxSlots * 2u * sizeof(uint32_t);
+    }
+    mesh->_positionBufferRef = _positionBufferRef;
+    buffersToCreate.push_back(_positionBufferRef);
+
+    BufferRef _normalBufferRef = BufferManager::createBuffer(_N(_NormalBuffer));
+    {
+      BufferManager::resetToDefault(_normalBufferRef);
+      BufferManager::addResourceFlags(
+          _normalBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_normalBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_normalBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_normalBufferRef) =
+          maxSlots * 2u * sizeof(uint32_t);
+    }
+    mesh->_normalBufferRef = _normalBufferRef;
+    buffersToCreate.push_back(_normalBufferRef);
+
+    BufferRef _binormalBufferRef = BufferManager::createBuffer(_N(_BinormalBuffer));
+    {
+      BufferManager::resetToDefault(_binormalBufferRef);
+      BufferManager::addResourceFlags(
+          _binormalBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_binormalBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_binormalBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_binormalBufferRef) =
+          maxSlots * 2u * sizeof(uint32_t);
+    }
+    mesh->_binormalBufferRef = _binormalBufferRef;
+    buffersToCreate.push_back(_binormalBufferRef);
+
+    BufferRef _tangentBufferRef = BufferManager::createBuffer(_N(_TangentBuffer));
+    {
+      BufferManager::resetToDefault(_tangentBufferRef);
+      BufferManager::addResourceFlags(
+          _tangentBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_tangentBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_tangentBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_tangentBufferRef) =
+          maxSlots * 2u * sizeof(uint32_t);
+    }
+    mesh->_tangentBufferRef = _tangentBufferRef;
+    buffersToCreate.push_back(_tangentBufferRef);
+
+    BufferRef _colorBufferRef = BufferManager::createBuffer(_N(_ColorBuffer));
+    {
+      BufferManager::resetToDefault(_colorBufferRef);
+      BufferManager::addResourceFlags(
+          _colorBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_colorBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_colorBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_colorBufferRef) =
+          maxSlots * 2u * sizeof(uint32_t);
+    }
+    mesh->_colorBufferRef = _colorBufferRef;
+    buffersToCreate.push_back(_colorBufferRef);
+
+    BufferRef _uv0BufferRef = BufferManager::createBuffer(_N(_Uv0Buffer));
+    {
+      BufferManager::resetToDefault(_uv0BufferRef);
+      BufferManager::addResourceFlags(
+          _uv0BufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descMemoryPoolType(_uv0BufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_uv0BufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_uv0BufferRef) = maxSlots * sizeof(uint32_t);
+    }
+    mesh->_uv0BufferRef = _uv0BufferRef;
+    buffersToCreate.push_back(_uv0BufferRef);
+
     // Pre-existing noise/permutation images referenced by the voxel generation shader
     mesh->_gradient3dImageRef =
         ImageManager::getResourceByName(_N(gradient3d));
@@ -771,19 +859,19 @@ static void obfuscateMesh(DynamicGeneratedMesh& mesh)
   if (mesh.renderCounter != 1)
     return;
 
-  float* positionBufferGpuMemory =
-      (float*)BufferManager::getGpuMemory(mesh._positionBufferRef);
+  // Each position slot is 2 x uint32 (packHalf2x16 format, 8 bytes/vertex)
+  uint32_t* positionBufferGpuMemory =
+      (uint32_t*)BufferManager::getGpuMemory(mesh._positionBufferRef);
 
   unsigned vertexCount = 0u;
   const unsigned maxVertices =
-      BufferManager::_descSizeInBytes(mesh._positionBufferRef) / (sizeof(float) * 4);
+      BufferManager::_descSizeInBytes(mesh._positionBufferRef) / (2u * sizeof(uint32_t));
 
   for (unsigned i = 0u; i < maxVertices; ++i)
   {
-    float x = positionBufferGpuMemory[i * 4 + 0];
-    float y = positionBufferGpuMemory[i * 4 + 1];
-    float z = positionBufferGpuMemory[i * 4 + 2];
-    if (x != 0.0f || y != 0.0f || z != 0.0f)
+    uint32_t xy = positionBufferGpuMemory[i * 2 + 0];
+    uint32_t zw = positionBufferGpuMemory[i * 2 + 1];
+    if (xy != 0u || zw != 0u)
       ++vertexCount;
   }
 
@@ -875,7 +963,47 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
     const Name& name = *(mesh->meshName);
 
     if (name != _N(terrain_generated))
+    {
+      // Wire the compute-generated vertex buffers into the entity's draw call.
+      Entity::EntityRef entityRef =
+          Entity::EntityManager::getEntityByName(name);
+      if (entityRef.isValid())
+      {
+        Components::MeshRef meshCompRef =
+            Components::MeshManager::getComponentForEntity(entityRef);
+        if (meshCompRef.isValid())
+        {
+          DrawCallArray& dcSets =
+              Components::MeshManager::_drawCalls(meshCompRef);
+          if (!dcSets.empty() && !dcSets[0].empty())
+          {
+            DrawCallRef dcRef = dcSets[0][0];
+            _INTR_ARRAY(VkBuffer)& vtxBuffers =
+                DrawCallManager::_vertexBuffers(dcRef);
+            if (vtxBuffers.size() >= 6u)
+            {
+              // Binding order must match IntrinsicCoreResourcesMesh.cpp:
+              // 0=position, 1=uv0, 2=normal, 3=tangent, 4=binormal, 5=color
+              vtxBuffers[0] =
+                  BufferManager::_vkBuffer(mesh->_positionBufferRef);
+              vtxBuffers[1] =
+                  BufferManager::_vkBuffer(mesh->_uv0BufferRef);
+              vtxBuffers[2] =
+                  BufferManager::_vkBuffer(mesh->_normalBufferRef);
+              vtxBuffers[3] =
+                  BufferManager::_vkBuffer(mesh->_tangentBufferRef);
+              vtxBuffers[4] =
+                  BufferManager::_vkBuffer(mesh->_binormalBufferRef);
+              vtxBuffers[5] =
+                  BufferManager::_vkBuffer(mesh->_colorBufferRef);
+            }
+            DrawCallManager::_descIndexBuffer(dcRef) = BufferRef();
+            DrawCallManager::_descVertexCount(dcRef) = mesh->indicesNumber;
+          }
+        }
+      }
       continue;
+    }
 
     PseudoInstancing::generateInstances();
   }
