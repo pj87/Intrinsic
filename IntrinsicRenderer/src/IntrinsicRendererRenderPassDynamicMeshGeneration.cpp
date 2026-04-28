@@ -855,6 +855,29 @@ void DynamicMeshGeneration::onReinitRendering() {}
 
 void DynamicMeshGeneration::destroy() {}
 
+static void obfuscateMesh(DynamicGeneratedMesh& mesh)
+{
+  // Only count once, on the frame after the first compute dispatch completes.
+  // At that point the GPU has finished frame 0's work (frame fence), so the
+  // host-visible staging buffer contains valid data.
+  if (mesh.renderCounter != 1)
+    return;
+
+  // Position buffer is tightly packed half-floats: each vertex occupies
+  // 3 × uint16 (x, y, z). A zero vertex has all three components == 0.
+  const uint16_t* buf =
+      (const uint16_t*)BufferManager::getGpuMemory(mesh._positionBufferRef);
+  const uint32_t maxSlots = mesh.indicesNumber; // set to grid*15 in init()
+
+  uint32_t vertexCount = 0u;
+  for (uint32_t i = 0u; i < maxSlots; ++i)
+  {
+    if (buf[i * 3u] != 0u || buf[i * 3u + 1u] != 0u || buf[i * 3u + 2u] != 0u)
+      ++vertexCount;
+  }
+
+  mesh.indicesNumber = vertexCount;
+}
 
 void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
 {
@@ -918,6 +941,8 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
     BufferManager::insertBufferMemoryBarrier(mesh->_colorBufferRef,
         VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+
+    obfuscateMesh(*mesh);
 
     mesh->isCalled = true;
     mesh->renderCounter++;

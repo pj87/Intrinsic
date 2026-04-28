@@ -84,7 +84,7 @@ struct DrawCallParallelTaskSet : enki::ITaskSet
           DrawCallManager::_descMeshComponent(drawCallRef);
 
       if (!meshCompRef.isValid())
-        return;
+        continue;
 
       const Name& name = Components::MeshManager::getMeshName(meshCompRef);
 
