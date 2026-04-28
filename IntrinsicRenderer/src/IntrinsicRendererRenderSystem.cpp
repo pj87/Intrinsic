@@ -194,7 +194,10 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
     RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
         64, 64, 64, _N(ProceduralHouse), "houses.comp", "normal_generation.comp",
         "geometry_generation_new.comp", false);
-    
+
+    RenderPass::DynamicMeshGeneration::init();
+    RenderPass::DynamicMeshGeneration::postInit();
+
     RenderPass::Bloom::init();
 
     RenderPass::Debug::init();

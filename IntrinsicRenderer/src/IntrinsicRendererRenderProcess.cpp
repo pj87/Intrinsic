@@ -440,6 +440,13 @@ void Default::renderFrame(float p_DeltaT)
       UniformManager::resetAllocator();
     }
 
+    // Run procedural mesh compute passes before any graphics draw calls
+    {
+      RenderPass::DynamicMeshGeneration::render(
+          p_DeltaT,
+          _cameras.empty() ? Components::CameraRef() : _cameras[0]);
+    }
+
     // Execute render steps
     {
       executeRenderSteps(p_DeltaT);
