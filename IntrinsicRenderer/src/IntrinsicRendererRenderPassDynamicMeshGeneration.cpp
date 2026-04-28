@@ -629,8 +629,8 @@ void DynamicMeshGeneration::init()
     BufferRef _positionBufferRef = BufferManager::createBuffer(_N(_PositionBuffer));
     {
       BufferManager::resetToDefault(_positionBufferRef);
-      BufferManager::addResourceFlags(
-          _positionBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      // No kResourceVolatile: this buffer must persist between frames so the CPU
+      // can read frame N's GPU results during frame N+1's obfuscateMesh pass.
       BufferManager::_descMemoryPoolType(_positionBufferRef) =
           MemoryPoolType::kStaticStagingBuffers;
       BufferManager::_descBufferType(_positionBufferRef) = BufferType::kStorage;
@@ -643,8 +643,6 @@ void DynamicMeshGeneration::init()
     BufferRef _normalBufferRef = BufferManager::createBuffer(_N(_NormalBuffer));
     {
       BufferManager::resetToDefault(_normalBufferRef);
-      BufferManager::addResourceFlags(
-          _normalBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
       BufferManager::_descMemoryPoolType(_normalBufferRef) =
           MemoryPoolType::kStaticStagingBuffers;
       BufferManager::_descBufferType(_normalBufferRef) = BufferType::kStorage;
@@ -657,8 +655,6 @@ void DynamicMeshGeneration::init()
     BufferRef _binormalBufferRef = BufferManager::createBuffer(_N(_BinormalBuffer));
     {
       BufferManager::resetToDefault(_binormalBufferRef);
-      BufferManager::addResourceFlags(
-          _binormalBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
       BufferManager::_descMemoryPoolType(_binormalBufferRef) =
           MemoryPoolType::kStaticStagingBuffers;
       BufferManager::_descBufferType(_binormalBufferRef) = BufferType::kStorage;
@@ -671,8 +667,6 @@ void DynamicMeshGeneration::init()
     BufferRef _tangentBufferRef = BufferManager::createBuffer(_N(_TangentBuffer));
     {
       BufferManager::resetToDefault(_tangentBufferRef);
-      BufferManager::addResourceFlags(
-          _tangentBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
       BufferManager::_descMemoryPoolType(_tangentBufferRef) =
           MemoryPoolType::kStaticStagingBuffers;
       BufferManager::_descBufferType(_tangentBufferRef) = BufferType::kStorage;
@@ -685,8 +679,6 @@ void DynamicMeshGeneration::init()
     BufferRef _colorBufferRef = BufferManager::createBuffer(_N(_ColorBuffer));
     {
       BufferManager::resetToDefault(_colorBufferRef);
-      BufferManager::addResourceFlags(
-          _colorBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
       BufferManager::_descMemoryPoolType(_colorBufferRef) =
           MemoryPoolType::kStaticStagingBuffers;
       BufferManager::_descBufferType(_colorBufferRef) = BufferType::kStorage;
@@ -699,8 +691,6 @@ void DynamicMeshGeneration::init()
     BufferRef _uv0BufferRef = BufferManager::createBuffer(_N(_Uv0Buffer));
     {
       BufferManager::resetToDefault(_uv0BufferRef);
-      BufferManager::addResourceFlags(
-          _uv0BufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
       BufferManager::_descMemoryPoolType(_uv0BufferRef) =
           MemoryPoolType::kStaticStagingBuffers;
       BufferManager::_descBufferType(_uv0BufferRef) = BufferType::kStorage;
@@ -855,32 +845,58 @@ void DynamicMeshGeneration::onReinitRendering() {}
 
 void DynamicMeshGeneration::destroy() {}
 
+// Called once for static meshes on the frame after the first compute dispatch.
+// Waits for the GPU to finish, then compacts all six vertex attribute buffers
+// in-place so that only real (non-zero-position) vertices remain at the front.
+// After this, mesh.indicesNumber is the number of real vertices to draw.
+//
+// The position buffer uses storePosition's tightly-packed half-float layout:
+// each vertex occupies exactly 3 consecutive uint16s (x, y, z).  A degenerate
+// vertex has all three components == 0 (written by the zeroing loop in the shader).
+// All other attribute buffers use the same stride-3 uint16 layout except UV and
+// color which are 1 uint32 per vertex.
+//
+// Forward in-place compaction is safe because the write pointer j always <= i.
 static void obfuscateMesh(DynamicGeneratedMesh& mesh)
 {
-  // Only count once, on the frame after the first compute dispatch completes.
-  // beginFrame() uses per-swapchain-image fences, so the previous frame's GPU
-  // work is not guaranteed done when we start recording the next frame.
-  // vkQueueWaitIdle is a one-time cost that guarantees all submitted compute
-  // writes are visible before we read the host-visible staging buffer.
-  if (mesh.renderCounter != 1)
-    return;
-
+  // Guarantee frame 0's GPU compute has finished before we read the buffers.
   vkQueueWaitIdle(RenderSystem::_vkQueue);
 
-  // Position buffer is tightly packed half-floats: each vertex occupies
-  // 3 × uint16 (x, y, z). A zero vertex has all three components == 0.
-  const uint16_t* buf =
-      (const uint16_t*)BufferManager::getGpuMemory(mesh._positionBufferRef);
-  const uint32_t maxSlots = mesh.indicesNumber; // set to grid*15 in init()
+  const uint32_t maxSlots = mesh.indicesNumber; // grid*15, set in init()
 
-  uint32_t vertexCount = 0u;
+  auto* posBuf   = (uint16_t*)BufferManager::getGpuMemory(mesh._positionBufferRef);
+  auto* normBuf  = (uint16_t*)BufferManager::getGpuMemory(mesh._normalBufferRef);
+  auto* biNBuf   = (uint16_t*)BufferManager::getGpuMemory(mesh._binormalBufferRef);
+  auto* tanBuf   = (uint16_t*)BufferManager::getGpuMemory(mesh._tangentBufferRef);
+  auto* uvBuf    = (uint32_t*)BufferManager::getGpuMemory(mesh._uv0BufferRef);
+  auto* colBuf   = (uint32_t*)BufferManager::getGpuMemory(mesh._colorBufferRef);
+
+  uint32_t j = 0u;
   for (uint32_t i = 0u; i < maxSlots; ++i)
   {
-    if (buf[i * 3u] != 0u || buf[i * 3u + 1u] != 0u || buf[i * 3u + 2u] != 0u)
-      ++vertexCount;
+    if (posBuf[i*3u] == 0u && posBuf[i*3u+1u] == 0u && posBuf[i*3u+2u] == 0u)
+      continue;
+
+    posBuf [j*3u+0u] = posBuf [i*3u+0u];
+    posBuf [j*3u+1u] = posBuf [i*3u+1u];
+    posBuf [j*3u+2u] = posBuf [i*3u+2u];
+    normBuf[j*3u+0u] = normBuf[i*3u+0u];
+    normBuf[j*3u+1u] = normBuf[i*3u+1u];
+    normBuf[j*3u+2u] = normBuf[i*3u+2u];
+    biNBuf [j*3u+0u] = biNBuf [i*3u+0u];
+    biNBuf [j*3u+1u] = biNBuf [i*3u+1u];
+    biNBuf [j*3u+2u] = biNBuf [i*3u+2u];
+    tanBuf [j*3u+0u] = tanBuf [i*3u+0u];
+    tanBuf [j*3u+1u] = tanBuf [i*3u+1u];
+    tanBuf [j*3u+2u] = tanBuf [i*3u+2u];
+    uvBuf  [j]       = uvBuf  [i];
+    colBuf [j]       = colBuf [i];
+    ++j;
   }
 
-  mesh.indicesNumber = vertexCount;
+  mesh.indicesNumber = j;
+  _INTR_LOG_INFO("obfuscateMesh '%s': %u / %u real vertices",
+                 mesh.meshName->getString().c_str(), j, maxSlots);
 }
 
 void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
@@ -890,70 +906,107 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
 
   for (auto& mesh : dynamicGenerationMeshes)
   {
-    if (!mesh->isDynamic && mesh->isCalled && mesh->renderCounter > 2)
+    // Static mesh: once vertex buffers are compacted (renderCounter > 1) skip everything.
+    if (!mesh->isDynamic && mesh->isCalled && mesh->renderCounter > 1)
       continue;
 
     VkCommandBuffer primaryCmdBuffer = RenderSystem::getPrimaryCommandBuffer();
 
-    if (mesh->isCalled)
+    // Dynamic meshes and the very first call for static meshes dispatch compute.
+    // Static meshes on their second pass (renderCounter == 1, isCalled == true)
+    // skip compute and instead compact the vertex buffers the GPU wrote on frame 0.
+    const bool dispatchCompute = mesh->isDynamic || !mesh->isCalled;
+
+    if (dispatchCompute)
     {
+      if (mesh->isCalled)
+      {
+        ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      }
+
+      // Stage 1: compute normals into the normals image (GENERAL→GENERAL self-barrier)
+      RenderSystem::dispatchComputeCall(mesh->_computeCallNormalRef, primaryCmdBuffer);
+
       ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
-          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+          VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+      // Stage 2: fill the voxel SDF field
+      RenderSystem::dispatchComputeCall(mesh->_computeCallVoxelGenerationRef,
+                                        primaryCmdBuffer);
+
+      BufferManager::insertBufferMemoryBarrier(mesh->_voxelBufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_voxelNormalBufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
+          VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+      // Stage 3: polygonize with marching cubes → writes vertex attribute buffers
+      RenderSystem::dispatchComputeCall(mesh->_computeCallMarchingCubesRef,
+                                        primaryCmdBuffer);
+
+      BufferManager::insertBufferMemoryBarrier(mesh->_positionBufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_normalBufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_binormalBufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_tangentBufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_uv0BufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_colorBufferRef,
+          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+
+      mesh->isCalled = true;
+    }
+    else
+    {
+      // Static mesh, one frame after the first compute: wait for the GPU to finish
+      // frame 0's work, then compact the vertex attribute buffers in-place so that
+      // only real (non-zero-position) vertices are at the front.  After this call
+      // mesh->indicesNumber holds the real vertex count and never changes again.
+      obfuscateMesh(*mesh);
+
+      // The compaction was a HOST write.  Tell the GPU it must be visible to the
+      // vertex stage before the draw calls in this same command buffer read the data.
+      BufferManager::insertBufferMemoryBarrier(mesh->_positionBufferRef,
+          VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_normalBufferRef,
+          VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_binormalBufferRef,
+          VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_tangentBufferRef,
+          VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_uv0BufferRef,
+          VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+      BufferManager::insertBufferMemoryBarrier(mesh->_colorBufferRef,
+          VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
     }
 
-    // Stage 1: compute normals into the normals image (GENERAL→GENERAL self-barrier)
-    RenderSystem::dispatchComputeCall(mesh->_computeCallNormalRef, primaryCmdBuffer);
-
-    ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
-    // Stage 2: fill the voxel SDF field
-    RenderSystem::dispatchComputeCall(mesh->_computeCallVoxelGenerationRef,
-                                      primaryCmdBuffer);
-
-    BufferManager::insertBufferMemoryBarrier(mesh->_voxelBufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-    BufferManager::insertBufferMemoryBarrier(mesh->_voxelNormalBufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-    ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
-    // Stage 3: polygonize with marching cubes → writes vertex attribute buffers
-    RenderSystem::dispatchComputeCall(mesh->_computeCallMarchingCubesRef,
-                                      primaryCmdBuffer);
-
-    BufferManager::insertBufferMemoryBarrier(mesh->_positionBufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-    BufferManager::insertBufferMemoryBarrier(mesh->_normalBufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-    BufferManager::insertBufferMemoryBarrier(mesh->_binormalBufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-    BufferManager::insertBufferMemoryBarrier(mesh->_tangentBufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-    BufferManager::insertBufferMemoryBarrier(mesh->_uv0BufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-    BufferManager::insertBufferMemoryBarrier(mesh->_colorBufferRef,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-
-    obfuscateMesh(*mesh);
-
-    mesh->isCalled = true;
     mesh->renderCounter++;
 
     const Name& name = *(mesh->meshName);
 
-    if (name != _N(terrain_generated))
+    if (name != _N(terrain_generated) || mesh->renderCounter <= 2)
     {
       // Wire the compute-generated vertex buffers into the entity's draw call.
       Entity::EntityRef entityRef =
@@ -998,9 +1051,12 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
           }
         }
       }
+
+      //_INTR_LOG_INFO("rendering mesh: %s bind buffers",
+      //               mesh->meshName->getString().c_str());
+
       continue;
     }
-
     PseudoInstancing::generateInstances();
   }
 }
