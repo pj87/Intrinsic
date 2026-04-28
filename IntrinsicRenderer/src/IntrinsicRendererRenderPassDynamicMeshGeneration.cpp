@@ -975,30 +975,35 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
         {
           DrawCallArray& dcSets =
               Components::MeshManager::_drawCalls(meshCompRef);
-          if (!dcSets.empty() && !dcSets[0].empty())
+          // Iterate over all material passes — GBufferDefault=1, Shadow=3,
+          // PerPixelPicking=13, etc.  dcSets is indexed by material pass index.
+          for (uint32_t passIdx = 0u; passIdx < dcSets.size(); ++passIdx)
           {
-            DrawCallRef dcRef = dcSets[0][0];
-            _INTR_ARRAY(VkBuffer)& vtxBuffers =
-                DrawCallManager::_vertexBuffers(dcRef);
-            if (vtxBuffers.size() >= 6u)
+            for (uint32_t dcIdx = 0u; dcIdx < dcSets[passIdx].size(); ++dcIdx)
             {
-              // Binding order must match IntrinsicCoreResourcesMesh.cpp:
-              // 0=position, 1=uv0, 2=normal, 3=tangent, 4=binormal, 5=color
-              vtxBuffers[0] =
-                  BufferManager::_vkBuffer(mesh->_positionBufferRef);
-              vtxBuffers[1] =
-                  BufferManager::_vkBuffer(mesh->_uv0BufferRef);
-              vtxBuffers[2] =
-                  BufferManager::_vkBuffer(mesh->_normalBufferRef);
-              vtxBuffers[3] =
-                  BufferManager::_vkBuffer(mesh->_tangentBufferRef);
-              vtxBuffers[4] =
-                  BufferManager::_vkBuffer(mesh->_binormalBufferRef);
-              vtxBuffers[5] =
-                  BufferManager::_vkBuffer(mesh->_colorBufferRef);
+              DrawCallRef dcRef = dcSets[passIdx][dcIdx];
+              _INTR_ARRAY(VkBuffer)& vtxBuffers =
+                  DrawCallManager::_vertexBuffers(dcRef);
+              if (vtxBuffers.size() >= 6u)
+              {
+                // Binding order matches IntrinsicCoreResourcesMesh.cpp:
+                // 0=position, 1=uv0, 2=normal, 3=tangent, 4=binormal, 5=color
+                vtxBuffers[0] =
+                    BufferManager::_vkBuffer(mesh->_positionBufferRef);
+                vtxBuffers[1] =
+                    BufferManager::_vkBuffer(mesh->_uv0BufferRef);
+                vtxBuffers[2] =
+                    BufferManager::_vkBuffer(mesh->_normalBufferRef);
+                vtxBuffers[3] =
+                    BufferManager::_vkBuffer(mesh->_tangentBufferRef);
+                vtxBuffers[4] =
+                    BufferManager::_vkBuffer(mesh->_binormalBufferRef);
+                vtxBuffers[5] =
+                    BufferManager::_vkBuffer(mesh->_colorBufferRef);
+              }
+              DrawCallManager::_descIndexBuffer(dcRef) = BufferRef();
+              DrawCallManager::_descVertexCount(dcRef) = mesh->indicesNumber;
             }
-            DrawCallManager::_descIndexBuffer(dcRef) = BufferRef();
-            DrawCallManager::_descVertexCount(dcRef) = mesh->indicesNumber;
           }
         }
       }
