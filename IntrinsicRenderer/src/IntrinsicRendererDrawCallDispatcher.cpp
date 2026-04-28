@@ -80,11 +80,35 @@ struct DrawCallParallelTaskSet : enki::ITaskSet
                 .data());
       }
 
+      Components::MeshRef meshCompRef =
+          DrawCallManager::_descMeshComponent(drawCallRef);
+
+      if (!meshCompRef.isValid())
+        return;
+
+      const Name& name = Components::MeshManager::getMeshName(meshCompRef);
+
       // Draw
       {
         Resources::BufferRef indexBufferRef =
             Resources::DrawCallManager::_descIndexBuffer(drawCallRef);
-        if (indexBufferRef.isValid())
+
+        if (_IS_OVERRIDEN_MESH(name))
+        {
+          // Procedural meshes never have an index buffer — use vkCmdDraw.
+          if (_IS_DYNAMIC_MESH(name))
+          {
+            vkCmdDraw(secondCmdBuffer, 1000000u, 1u, 0u, 0u);
+          }
+          else
+          {
+            vkCmdDraw(
+                secondCmdBuffer, _GET_INDICES_NUMBER(name),
+                Resources::DrawCallManager::_descInstanceCount(drawCallRef),
+                0u, 0u);
+          }
+        }
+        else if (indexBufferRef.isValid())
         {
           const VkIndexType indexType =
               Resources::BufferManager::_descBufferType(indexBufferRef) ==
@@ -96,11 +120,26 @@ struct DrawCallParallelTaskSet : enki::ITaskSet
               Resources::BufferManager::_vkBuffer(indexBufferRef),
               Resources::DrawCallManager::_indexBufferOffset(drawCallRef),
               indexType);
-          vkCmdDrawIndexed(
-              secondCmdBuffer,
-              Resources::DrawCallManager::_descIndexCount(drawCallRef),
-              Resources::DrawCallManager::_descInstanceCount(drawCallRef), 0u,
-              0u, 0u);
+
+          if (_IS_INSTANCED_MESH(name))
+          {
+            std::unique_ptr<Intrinsic::Renderer::InstancedMesh>& instancedMesh =
+                _INSTANCED_MESH_SIZE(name);
+            vkCmdDrawIndexed(
+                secondCmdBuffer,
+                Resources::DrawCallManager::_descIndexCount(drawCallRef) *
+                    instancedMesh->sizeX * instancedMesh->sizeZ,
+                Resources::DrawCallManager::_descInstanceCount(drawCallRef), 0u,
+                0u, 0u);
+          }
+          else
+          {
+            vkCmdDrawIndexed(
+                secondCmdBuffer,
+                Resources::DrawCallManager::_descIndexCount(drawCallRef),
+                Resources::DrawCallManager::_descInstanceCount(drawCallRef), 0u,
+                0u, 0u);
+          }
         }
         else
         {
