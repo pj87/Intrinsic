@@ -858,10 +858,14 @@ void DynamicMeshGeneration::destroy() {}
 static void obfuscateMesh(DynamicGeneratedMesh& mesh)
 {
   // Only count once, on the frame after the first compute dispatch completes.
-  // At that point the GPU has finished frame 0's work (frame fence), so the
-  // host-visible staging buffer contains valid data.
+  // beginFrame() uses per-swapchain-image fences, so the previous frame's GPU
+  // work is not guaranteed done when we start recording the next frame.
+  // vkQueueWaitIdle is a one-time cost that guarantees all submitted compute
+  // writes are visible before we read the host-visible staging buffer.
   if (mesh.renderCounter != 1)
     return;
+
+  vkQueueWaitIdle(RenderSystem::_vkQueue);
 
   // Position buffer is tightly packed half-floats: each vertex occupies
   // 3 × uint16 (x, y, z). A zero vertex has all three components == 0.
