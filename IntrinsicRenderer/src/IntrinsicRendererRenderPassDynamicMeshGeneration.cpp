@@ -624,6 +624,7 @@ void DynamicMeshGeneration::init()
     // Each slot holds up to 1 vertex; each voxel cube contributes up to 15 slots.
     const uint32_t maxSlots =
         (uint32_t)((*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ)) * 15u;
+    mesh->indicesNumber = maxSlots;
 
     BufferRef _positionBufferRef = BufferManager::createBuffer(_N(_PositionBuffer));
     {
@@ -854,43 +855,6 @@ void DynamicMeshGeneration::onReinitRendering() {}
 
 void DynamicMeshGeneration::destroy() {}
 
-static void obfuscateMesh(DynamicGeneratedMesh& mesh)
-{
-  if (mesh.renderCounter != 1)
-    return;
-
-  // Each position slot is 2 x uint32 (packHalf2x16 format, 8 bytes/vertex)
-  uint32_t* positionBufferGpuMemory =
-      (uint32_t*)BufferManager::getGpuMemory(mesh._positionBufferRef);
-
-  unsigned vertexCount = 0u;
-  const unsigned maxVertices =
-      BufferManager::_descSizeInBytes(mesh._positionBufferRef) / (2u * sizeof(uint32_t));
-
-  for (unsigned i = 0u; i < maxVertices; ++i)
-  {
-    uint32_t xy = positionBufferGpuMemory[i * 2 + 0];
-    uint32_t zw = positionBufferGpuMemory[i * 2 + 1];
-    if (xy != 0u || zw != 0u)
-      ++vertexCount;
-  }
-
-  mesh.indicesNumber = vertexCount;
-
-  // Wire the GPU-written vertex buffers into the named mesh slot so the
-  // standard draw call pipeline can bind them as vertex inputs.
-  const Name& meshName = *(mesh.meshName);
-  BufferManager::_nameToInitlialBufferMap[meshName] = mesh._positionBufferRef;
-  BufferManager::_dynamicBuffers[meshName] =
-  {
-    mesh._positionBufferRef,
-    mesh._normalBufferRef,
-    mesh._binormalBufferRef,
-    mesh._tangentBufferRef,
-    mesh._uv0BufferRef,
-    mesh._colorBufferRef
-  };
-}
 
 void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
 {
@@ -954,8 +918,6 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
     BufferManager::insertBufferMemoryBarrier(mesh->_colorBufferRef,
         VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-
-    obfuscateMesh(*mesh);
 
     mesh->isCalled = true;
     mesh->renderCounter++;

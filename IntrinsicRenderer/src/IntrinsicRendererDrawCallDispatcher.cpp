@@ -96,17 +96,11 @@ struct DrawCallParallelTaskSet : enki::ITaskSet
         if (_IS_OVERRIDEN_MESH(name))
         {
           // Procedural meshes never have an index buffer — use vkCmdDraw.
-          if (_IS_DYNAMIC_MESH(name))
-          {
-            vkCmdDraw(secondCmdBuffer, 1000000u, 1u, 0u, 0u);
-          }
-          else
-          {
-            vkCmdDraw(
-                secondCmdBuffer, _GET_INDICES_NUMBER(name),
-                Resources::DrawCallManager::_descInstanceCount(drawCallRef),
-                0u, 0u);
-          }
+          // _GET_INDICES_NUMBER returns maxSlots (grid * 15), set at init time.
+          vkCmdDraw(
+              secondCmdBuffer, _GET_INDICES_NUMBER(name),
+              Resources::DrawCallManager::_descInstanceCount(drawCallRef),
+              0u, 0u);
         }
         else if (indexBufferRef.isValid())
         {
