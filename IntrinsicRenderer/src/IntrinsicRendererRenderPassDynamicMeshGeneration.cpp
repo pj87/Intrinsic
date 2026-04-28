@@ -625,6 +625,7 @@ void DynamicMeshGeneration::init()
     const uint32_t maxSlots =
         (uint32_t)((*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ)) * 15u;
     mesh->indicesNumber = maxSlots;
+    mesh->maxIndices = maxSlots;
 
     BufferRef _positionBufferRef = BufferManager::createBuffer(_N(_PositionBuffer));
     {
@@ -906,16 +907,16 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
 
   for (auto& mesh : dynamicGenerationMeshes)
   {
-    // Static mesh: once vertex buffers are compacted (renderCounter > 1) skip everything.
-    if (!mesh->isDynamic && mesh->isCalled && mesh->renderCounter > 1)
+    // Skip once the vertex buffers are compacted and no recompute is pending.
+    if (!mesh->needsRecompute && mesh->isCalled && mesh->renderCounter > 1)
       continue;
 
     VkCommandBuffer primaryCmdBuffer = RenderSystem::getPrimaryCommandBuffer();
 
-    // Dynamic meshes and the very first call for static meshes dispatch compute.
-    // Static meshes on their second pass (renderCounter == 1, isCalled == true)
-    // skip compute and instead compact the vertex buffers the GPU wrote on frame 0.
-    const bool dispatchCompute = mesh->isDynamic || !mesh->isCalled;
+    // Dispatch compute when params changed (needsRecompute) or on the very first call.
+    // On the frame after the first/last compute (needsRecompute==false, isCalled==true)
+    // we skip compute and compact instead.
+    const bool dispatchCompute = mesh->needsRecompute || !mesh->isCalled;
 
     if (dispatchCompute)
     {
@@ -971,10 +972,15 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 
       mesh->isCalled = true;
+      mesh->needsRecompute = false;
+      // If params changed after a previous compaction, reset the vertex count so
+      // the new (uncompacted) data is drawn correctly until next compaction pass.
+      if (mesh->renderCounter > 1)
+        mesh->indicesNumber = mesh->maxIndices;
     }
     else
     {
-      // Static mesh, one frame after the first compute: wait for the GPU to finish
+      // Frame after compute: wait for the GPU to finish
       // frame 0's work, then compact the vertex attribute buffers in-place so that
       // only real (non-zero-position) vertices are at the front.  After this call
       // mesh->indicesNumber holds the real vertex count and never changes again.
@@ -1080,6 +1086,7 @@ void DynamicMeshGeneration::update(const Name& name, const float& p_DeltaT)
       BufferRef buffer = mesh->_noiseParametersRef;
       updateDataMemory(mesh->params, buffer,
                        BufferManager::_descSizeInBytes(buffer), 0);
+      mesh->needsRecompute = true;
     }
 
     mesh->updateCounter++;
@@ -1102,6 +1109,7 @@ void DynamicMeshGeneration::update(float p_DeltaT)
       BufferRef buffer = mesh->_noiseParametersRef;
       updateDataMemory(mesh->params, buffer,
                        BufferManager::_descSizeInBytes(buffer), 0);
+      mesh->needsRecompute = true;
     }
 
     mesh->updateCounter++;

@@ -106,8 +106,10 @@ struct DynamicGeneratedMesh
   int renderCounter = 0;
   int updateCounter = 0;
   unsigned indicesNumber = 0;
+  unsigned maxIndices = 0;  // grid*15, never changes after init
   bool isCalled = false;
   bool isDynamic;
+  bool needsRecompute = true;  // cleared after first dispatch, set by update()
   int *sizeX, *sizeY, *sizeZ;
   int sizes[4];
   float firstParam, secondParam;
