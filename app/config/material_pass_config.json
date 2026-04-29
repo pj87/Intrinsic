@@ -136,6 +136,14 @@
       "boundResources" : "GBuffer"
     },
     {
+      "name" : "GBufferTemple",
+      "baseVertexGpuProgram" : "gbuffer_temple.vert",
+      "baseFragmentGpuProgram" : "gbuffer_temple.frag",
+      "renderPass" : "GBuffer",
+      "blendStates" : ["Default", "Default", "Default"],
+      "boundResources" : "GBuffer"
+    },
+    {
       "name" : "GBufferWireframe",
       "baseVertexGpuProgram" : "position_only.vert",
       "baseFragmentGpuProgram" : "gbuffer_solid.frag",

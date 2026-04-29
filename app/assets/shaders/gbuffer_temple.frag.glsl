@@ -36,6 +36,7 @@ layout(location = 2) in vec3 inBinormal;
 layout(location = 3) in vec3 inColor;
 layout(location = 4) in vec2 inUV0;
 layout(location = 5) in vec3 inPosition;
+layout(location = 6) in vec3 inViewPosition;
 layout(location = 7) in vec3 inNormalTPM;
 
 // Output
@@ -112,26 +113,26 @@ mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv )
 
 void main()
 {
-  //const mat3 TBN = mat3(inTangent, inBinormal, inNormal);
-  const mat3 TBN = cotangent_frame(inNormal, inPosition, inUV0);
-  //const mat3 TBN = cotangent_frame(inNormal, inPosition, normalize(inPosition.xz));
-  const vec2 uv0 = UV0_TRANSFORM_ANIMATED(inUV0);
+  vec3 geoNormal  = normalize(-cross(dFdx(inViewPosition), dFdy(inViewPosition)));
+  vec3 geoNormalM = normalize(cross(dFdx(inPosition), dFdy(inPosition)));
+  vec3 _triW = abs(geoNormalM);
+  _triW /= (_triW.x + _triW.y + _triW.z + 0.0001);
+  vec3 _pos = inPosition / 10.0;
 
   GBuffer gbuffer;
   {
-    gbuffer.albedo = vec4(inColor, 1.0) + vec4(mix(tex3D(inPosition, inNormalTPM, albedoTex), tex3D(inPosition / 10.0, inNormalTPM, emissiveTex), 1.0), 1.0) * uboPerInstance.colorTint;
-    //gbuffer.albedo = vec4(inColor, 1.0) + mix(tex3d(inPosition, inNormalTPM), tex3d_1(inPosition, inNormalTPM), 1.0) * uboPerInstance.colorTint;
-	//gbuffer.albedo = vec4(inColor, 1.0) + mix(texture(albedoTex, uv0), texture(emissiveTex, uv0), 1.0) * uboPerInstance.colorTint;
-	
-    //gbuffer.normal = normalize(tex3DNormal(inPosition, inNormalTPM, normalTex));
-    gbuffer.normal = normalize(TBN * tex3DNormal(inPosition, inNormalTPM, normalTex));
-	const vec2 pbr = tex3D(inPosition, inNormalTPM, pbrTex).rg;
+    vec3 _albedo = texture(albedoTex, _pos.yz).rgb * _triW.x +
+                   texture(albedoTex, _pos.xz).rgb * _triW.y +
+                   texture(albedoTex, _pos.xy).rgb * _triW.z;
+    gbuffer.albedo = vec4(_albedo, 1.0) * uboPerInstance.colorTint;
+    gbuffer.normal = geoNormal;
+    const vec2 pbr = tex3D(inPosition, geoNormalM, pbrTex).rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
     gbuffer.specular = uboPerMaterial.pbrBias.g;
     gbuffer.roughness = adjustRoughness(pbr.g + uboPerMaterial.pbrBias.b,
                                         uboPerMaterial.data1.x);
     gbuffer.materialBufferIdx = uboPerMaterial.data0.x;
-	gbuffer.emissive = tex3D(inPosition, inNormalTPM, emissiveTex).r * 0.1;
+    gbuffer.emissive = tex3D(inPosition, geoNormalM, emissiveTex).r * 0.1;
     gbuffer.occlusion = 1.0;
   }
   writeGBuffer(gbuffer, outAlbedo, outNormal, outParameter0);
