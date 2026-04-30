@@ -3,7 +3,7 @@
     "properties": {
         "name": "temple",
         "materialPassMask": [
-            "GBufferTemple",
+            "GBufferGenerated",
             "GBufferWireframe",
             "PerPixelPicking"
         ],
@@ -16,8 +16,8 @@
             1.0
         ],
         "uvAnimation": [
-            0.0,
-            0.0
+            1.0,
+            1.0
         ],
         "translucencyThickness": 1.0,
         "emissiveIntensity": 0.0,
