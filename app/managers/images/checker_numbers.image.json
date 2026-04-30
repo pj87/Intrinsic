@@ -1,0 +1,10 @@
+{
+    "name": "checker_numbers",
+    "properties": {
+        "name": "checker_numbers",
+        "imageType": 1,
+        "imageFormat": 8,
+        "fileName": "checker_numbers.dds",
+        "avgNormLength": 1.0
+    }
+}
