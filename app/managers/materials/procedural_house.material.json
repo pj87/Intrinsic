@@ -1,0 +1,32 @@
+{
+    "name": "procedural_house",
+    "properties": {
+        "name": "procedural_house",
+        "materialPassMask": [
+            "GBufferDefault",
+            "GBufferGenerated",
+            "GBufferWireframe",
+            "Shadow",
+            "PerPixelPicking"
+        ],
+        "albedoTextureName": "ProceduralHouse_GEN",
+        "emissiveTextureName": "white",
+        "uvOffsetScale": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+        ],
+        "uvAnimation": [
+            0.0,
+            0.0
+        ],
+        "translucencyThickness": 1.0,
+        "emissiveIntensity": 0.0,
+        "normalTextureName": "ProceduralHouse_NRM_GEN",
+        "pbrTextureName": "ProceduralHouse_PBR_GEN",
+        "metalMaskBias": 0.0,
+        "roughnessBias": 0.3,
+        "specularBias": 0.0
+    }
+}
