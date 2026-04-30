@@ -1,0 +1,10 @@
+{
+    "name": "perm_table2d",
+    "properties": {
+        "name": "perm_table2d",
+        "imageType": 1,
+        "imageFormat": 7,
+        "fileName": "perm_table2d.dds",
+        "avgNormLength": 1.0
+    }
+}
