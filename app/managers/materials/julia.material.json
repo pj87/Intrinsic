@@ -1,0 +1,30 @@
+{
+    "name": "julia",
+    "properties": {
+        "name": "julia",
+        "materialPassMask": [
+            "GBufferJulia",
+            "GBufferWireframe",
+            "PerPixelPicking"
+        ],
+        "albedoTextureName": "checkerboard",
+        "emissiveTextureName": "white",
+        "uvOffsetScale": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+        ],
+        "uvAnimation": [
+            0.0,
+            0.0
+        ],
+        "translucencyThickness": 1.0,
+        "emissiveIntensity": 0.0,
+        "normalTextureName": "Temple_NRM_GEN",
+        "pbrTextureName": "checkerboard_PBR",
+        "metalMaskBias": 0.0,
+        "roughnessBias": 0.4,
+        "specularBias": 0.0
+    }
+}

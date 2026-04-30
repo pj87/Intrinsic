@@ -295,7 +295,7 @@
 		{
 			"type" : "RenderPassGenericMesh",
 			"name" : "GBuffer",
-			"materialPasses" : ["GBufferDefault", "GBufferTerrain", "GBufferFoliage", "GBufferGrass", "GBufferTemple"],
+			"materialPasses" : ["GBufferDefault", "GBufferTerrain", "GBufferFoliage", "GBufferGrass", "GBufferTemple", "GBufferJulia"],
 			"renderOrder" : "FrontToBack",
 			"outputs" : [
 				["GBufferAlbedo", [0.1, 0.5, 1.0, 1.0]],

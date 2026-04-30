@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_julia.frag",
+    "properties": {
+        "name": "gbuffer_julia.frag",
+        "gpuProgramName": "gbuffer_temple.frag.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 1
+    }
+}

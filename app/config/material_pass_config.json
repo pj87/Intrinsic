@@ -144,6 +144,14 @@
       "boundResources" : "GBuffer"
     },
     {
+      "name" : "GBufferJulia",
+      "baseVertexGpuProgram" : "gbuffer_julia.vert",
+      "baseFragmentGpuProgram" : "gbuffer_julia.frag",
+      "renderPass" : "GBuffer",
+      "blendStates" : ["Default", "Default", "Default"],
+      "boundResources" : "GBuffer"
+    },
+    {
       "name" : "GBufferWireframe",
       "baseVertexGpuProgram" : "position_only.vert",
       "baseFragmentGpuProgram" : "gbuffer_solid.frag",
