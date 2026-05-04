@@ -927,14 +927,7 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
       }
 
-      // Stage 1: compute normals into the normals image (GENERAL→GENERAL self-barrier)
-      RenderSystem::dispatchComputeCall(mesh->_computeCallNormalRef, primaryCmdBuffer);
-
-      ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
-          VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
-      // Stage 2: fill the voxel SDF field
+      // Stage 1: fill the voxel SDF field
       RenderSystem::dispatchComputeCall(mesh->_computeCallVoxelGenerationRef,
                                         primaryCmdBuffer);
 
@@ -944,6 +937,10 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
       BufferManager::insertBufferMemoryBarrier(mesh->_voxelNormalBufferRef,
           VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+      // Stage 2: compute normals from the now-populated voxel SDF
+      RenderSystem::dispatchComputeCall(mesh->_computeCallNormalRef, primaryCmdBuffer);
+
       ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
           VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);

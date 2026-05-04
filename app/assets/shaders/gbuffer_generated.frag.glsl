@@ -50,7 +50,7 @@ vec3 tex3D(vec3 pos, vec3 nor, sampler2D s) {
 
 void main()
 {
-  vec3 geoNormal  = normalize(-cross(dFdx(inViewPosition), dFdy(inViewPosition)));
+  vec3 geoNormal  = normalize(-inNormal);
   vec3 geoNormalM = normalize(cross(dFdx(inPosition), dFdy(inPosition)));
   vec3 _triW = abs(geoNormalM);
   _triW /= (_triW.x + _triW.y + _triW.z + 0.0001);
