@@ -91,8 +91,6 @@ void Application::init(void* p_PlatformHandle, void* p_PlatformWindow)
     World::load("worlds/" + Settings::Manager::_initialWorld);
   }
 
-  Renderer::RenderPass::DynamicTextureGeneration::postInit();
-
   // Initializes game states
   {
     GameStates::Editing::init();

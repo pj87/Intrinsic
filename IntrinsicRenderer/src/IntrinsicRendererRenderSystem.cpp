@@ -219,10 +219,11 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
         2048, 2048, 1, _N(ProceduralHouse_GEN), _N(ProceduralHouse_PBR_GEN),
         "texture_PBR1_generation.comp", false);
 
+    RenderPass::DynamicTextureGeneration::init();
+    Renderer::RenderPass::DynamicTextureGeneration::postInit();
+
     RenderPass::DynamicMeshGeneration::init();
     RenderPass::DynamicMeshGeneration::postInit();
-
-    RenderPass::DynamicTextureGeneration::init();
 
     RenderPass::Bloom::init();
 
