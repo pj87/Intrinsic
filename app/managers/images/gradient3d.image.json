@@ -3,7 +3,7 @@
     "properties": {
         "name": "gradient3d",
         "imageType": 1,
-        "imageFormat": 7,
+        "imageFormat": 26,
         "fileName": "gradient3d.dds",
         "avgNormLength": 1.0
     }

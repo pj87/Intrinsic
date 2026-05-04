@@ -243,6 +243,8 @@ _INTR_INLINE VkFormat mapFormatToVkFormat(Format::Enum p_Format)
   case Format::kD16UnormS8UInt:
     return VK_FORMAT_D16_UNORM_S8_UINT;
 
+  case Format::kR8G8B8A8UNorm:
+    return VK_FORMAT_R8G8B8A8_UNORM;
   case Format::kB8G8R8A8UNorm:
     return VK_FORMAT_B8G8R8A8_UNORM;
   case Format::kB8G8R8A8Srgb:
@@ -269,6 +271,9 @@ _INTR_INLINE VkFormat mapFormatToVkFormat(Format::Enum p_Format)
 
   case Format::kR8UNorm:
     return VK_FORMAT_R8_UNORM;
+  case Format::kR8G8Unorm:
+    return VK_FORMAT_R8G8_UNORM;
+  
   default:
     _INTR_ASSERT(false && "Failed to map format");
     return VK_FORMAT_R32G32B32_SFLOAT;

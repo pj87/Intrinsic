@@ -280,6 +280,9 @@
 		// GBuffer passes
 		// ->
 		{
+			"type" : "RenderPassDynamicTextureGeneration"
+		},
+		{
 			"type" : "SwitchCamera",
 			"cameraName" : "ActiveCamera"
 		},
