@@ -50,8 +50,9 @@ vec3 tex3D(vec3 pos, vec3 nor, sampler2D s) {
 
 void main()
 {
-  vec3 geoNormal = normalize(inNormal);
-  vec3 _triW = abs(geoNormal);
+  vec3 geoNormal  = normalize(-inNormal);
+  vec3 geoNormalM = normalize(cross(dFdx(inPosition), dFdy(inPosition)));
+  vec3 _triW = abs(geoNormalM);
   _triW /= (_triW.x + _triW.y + _triW.z + 0.0001);
   vec3 _pos = inPosition;
 
@@ -62,13 +63,13 @@ void main()
                    texture(albedoTex, _pos.xy).rgb * _triW.z;
     gbuffer.albedo = vec4(_albedo, 1.0) * uboPerInstance.colorTint;
     gbuffer.normal = geoNormal;
-    const vec2 pbr = tex3D(inPosition, geoNormal, pbrTex).rg;
+    const vec2 pbr = tex3D(inPosition, geoNormalM, pbrTex).rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
     gbuffer.specular = uboPerMaterial.pbrBias.g;
     gbuffer.roughness = adjustRoughness(pbr.g + uboPerMaterial.pbrBias.b,
                                         uboPerMaterial.data1.x);
     gbuffer.materialBufferIdx = uboPerMaterial.data0.x;
-    gbuffer.emissive = tex3D(inPosition, geoNormal, emissiveTex).r * 0.1;
+    gbuffer.emissive = tex3D(inPosition, geoNormalM, emissiveTex).r * 0.1;
     gbuffer.occlusion = 1.0;
   }
   writeGBuffer(gbuffer, outAlbedo, outNormal, outParameter0);

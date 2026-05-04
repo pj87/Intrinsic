@@ -4,7 +4,7 @@
         "name": "procedural_house",
         "materialPassMask": [
             "GBufferDefault",
-            "GBufferGenerated",
+            "GBufferGeneratedFlat",
             "GBufferWireframe",
             "Shadow",
             "PerPixelPicking"

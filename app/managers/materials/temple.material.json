@@ -3,7 +3,7 @@
     "properties": {
         "name": "temple",
         "materialPassMask": [
-            "GBufferGenerated",
+            "GBufferGeneratedFlat",
             "GBufferWireframe",
             "PerPixelPicking"
         ],

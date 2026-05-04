@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_generated_flat.frag",
+    "properties": {
+        "name": "gbuffer_generated_flat.frag",
+        "gpuProgramName": "gbuffer_generated_flat.frag.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 1
+    }
+}
