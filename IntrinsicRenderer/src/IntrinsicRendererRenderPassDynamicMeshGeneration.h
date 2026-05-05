@@ -21,6 +21,9 @@
 #define _GET_INDICES_NUMBER(name)                                               \
   Intrinsic::Renderer::RenderPass::DynamicMeshGeneration::getIndicesNumber(    \
       name)
+#define _GET_INDIRECT_BUFFER(name)                                               \
+  Intrinsic::Renderer::RenderPass::DynamicMeshGeneration::getIndirectBuffer(    \
+      name)
 
 namespace Intrinsic
 {
@@ -137,6 +140,7 @@ struct DynamicMeshGeneration
   static bool isOverridenMesh(const Name&);
   static bool isDynamicMesh(const Name&);
   static unsigned getIndicesNumber(const Name& meshName);
+  static VkBuffer getIndirectBuffer(const Name& meshName);
 
   static void init();
   static void onReinitRendering();

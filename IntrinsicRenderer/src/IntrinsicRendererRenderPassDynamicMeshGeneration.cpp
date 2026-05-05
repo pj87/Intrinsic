@@ -511,6 +511,16 @@ unsigned DynamicMeshGeneration::getIndicesNumber(const Name& meshName)
   return 0u;
 }
 
+VkBuffer DynamicMeshGeneration::getIndirectBuffer(const Name& meshName)
+{
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    if ((*mesh->meshName) == meshName)
+      return BufferManager::_vkBuffer(mesh->_vertexCountBufferRef);
+  }
+  return VK_NULL_HANDLE;
+}
+
 void DynamicMeshGeneration::init()
 {
   BufferRefArray buffersToCreate;
@@ -632,7 +642,7 @@ void DynamicMeshGeneration::init()
       BufferManager::_descMemoryPoolType(_vertexCountBufferRef) =
           MemoryPoolType::kStaticStagingBuffers;
       BufferManager::_descBufferType(_vertexCountBufferRef) = BufferType::kStorage;
-      BufferManager::_descSizeInBytes(_vertexCountBufferRef) = sizeof(uint32_t);
+      BufferManager::_descSizeInBytes(_vertexCountBufferRef) = sizeof(VkDrawIndirectCommand);
     }
     mesh->_vertexCountBufferRef = _vertexCountBufferRef;
     buffersToCreate.push_back(_vertexCountBufferRef);
@@ -756,13 +766,15 @@ void DynamicMeshGeneration::init()
   BufferManager::createResources(buffersToCreate);
   ImageManager::createResources(imgsToCreate);
 
-  // Initialize vertex count buffers to zero
+  // Initialize VkDrawIndirectCommand: instanceCount=1, rest=0
   for (auto& mesh : dynamicGenerationMeshes)
   {
-    uint32_t zero = 0u;
-    uint32_t* countPtr =
-        (uint32_t*)BufferManager::getGpuMemory(mesh->_vertexCountBufferRef);
-    *countPtr = zero;
+    VkDrawIndirectCommand* cmd =
+        (VkDrawIndirectCommand*)BufferManager::getGpuMemory(mesh->_vertexCountBufferRef);
+    cmd->vertexCount   = 0u;
+    cmd->instanceCount = 1u;
+    cmd->firstVertex   = 0u;
+    cmd->firstInstance = 0u;
   }
 
   // Transition normals images UNDEFINED→GENERAL for the first compute dispatch
@@ -1008,6 +1020,13 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
       BufferManager::insertBufferMemoryBarrier(mesh->_colorBufferRef,
           VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+
+      if (mesh->isDynamic)
+      {
+        BufferManager::insertBufferMemoryBarrier(mesh->_vertexCountBufferRef,
+            VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+      }
 
       mesh->isCalled = true;
       mesh->needsRecompute = false;

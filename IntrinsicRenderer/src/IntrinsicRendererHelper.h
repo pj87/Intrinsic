@@ -173,7 +173,8 @@ mapBufferTypeToVkUsageFlagBits(BufferType::Enum p_BufferType)
     return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
   case BufferType::kStorage:
     return static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+                                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   }
 
   _INTR_ASSERT(false && "Failed to map buffer type");
