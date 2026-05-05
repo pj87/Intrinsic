@@ -20,19 +20,19 @@ struct Debug
 	vec4 debug2;
 };
 
-layout(binding = 0) buffer _PositionBuffer
+layout(binding = 0) coherent buffer _PositionBuffer
 {
 	uint _Positions[];
 };
-layout(binding = 1) buffer _NormalBuffer
+layout(binding = 1) coherent buffer _NormalBuffer
 {
 	uint _Normals[];
 };
-layout(binding = 2) buffer _TangentBuffer
+layout(binding = 2) coherent buffer _TangentBuffer
 {
 	uint _Tangents[];
 };
-layout(binding = 3) buffer _BinormalBuffer
+layout(binding = 3) coherent buffer _BinormalBuffer
 {
 	uint _Binormals[];
 };
@@ -134,21 +134,27 @@ uint convert(vec2 pos0, vec2 pos1)
 	return(packHalf2x16(pos0) << 16 | packHalf2x16(pos1));
 }
 
+// Each vertex occupies 1.5 uint32s in the packed half-float buffer.
+// The uint32 at the boundary between an even vertex i and odd vertex i+1 is
+// shared: LOW16 = i.z, HIGH16 = (i+1).x.  When writing from concurrent GPU
+// invocations those two halves must be set with atomics to avoid a race.
 void storePosition(uint i, vec3 pos1)
 {
 	if (i % 2 == 0)
 	{
 		uint index = i + i / 2;
 		_Positions[index] = packHalf2x16(pos1.xy);
-		vec2 tmp = unpackHalf2x16(_Positions[index + 1]);
-		_Positions[index + 1] = packHalf2x16(vec2(pos1.z, tmp.y));
+		// LOW16 of shared word = our z; HIGH16 belongs to the next vertex.
+		atomicAnd(_Positions[index + 1], 0xFFFF0000u);
+		atomicOr (_Positions[index + 1], packHalf2x16(vec2(pos1.z, 0.0)));
 	}
 	else
-	{	
+	{
 		uint index = i + (i - 1) / 2;
-		vec2 tmp = unpackHalf2x16(_Positions[index]);
-		_Positions[index] = packHalf2x16(vec2(tmp.x, pos1.x));
-		_Positions[index + 1] = packHalf2x16(vec2(pos1.y, pos1.z));
+		// HIGH16 of shared word = our x; LOW16 belongs to the previous vertex.
+		atomicAnd(_Positions[index], 0x0000FFFFu);
+		atomicOr (_Positions[index], packHalf2x16(vec2(0.0, pos1.x)));
+		_Positions[index + 1] = packHalf2x16(pos1.yz);
 	}
 }
 
@@ -158,15 +164,15 @@ void storeNormal(uint i, vec3 pos1)
 	{
 		uint index = i + i / 2;
 		_Normals[index] = packHalf2x16(pos1.xy);
-		vec2 tmp = unpackHalf2x16(_Normals[index + 1]);
-		_Normals[index + 1] = packHalf2x16(vec2(pos1.z, tmp.y));
+		atomicAnd(_Normals[index + 1], 0xFFFF0000u);
+		atomicOr (_Normals[index + 1], packHalf2x16(vec2(pos1.z, 0.0)));
 	}
 	else
-	{	
+	{
 		uint index = i + (i - 1) / 2;
-		vec2 tmp = unpackHalf2x16(_Normals[index]);
-		_Normals[index] = packHalf2x16(vec2(tmp.x, pos1.x));
-		_Normals[index + 1] = packHalf2x16(vec2(pos1.y, pos1.z));
+		atomicAnd(_Normals[index], 0x0000FFFFu);
+		atomicOr (_Normals[index], packHalf2x16(vec2(0.0, pos1.x)));
+		_Normals[index + 1] = packHalf2x16(pos1.yz);
 	}
 }
 
@@ -176,15 +182,15 @@ void storeBinormal(uint i, vec3 pos1)
 	{
 		uint index = i + i / 2;
 		_Binormals[index] = packHalf2x16(pos1.xy);
-		vec2 tmp = unpackHalf2x16(_Binormals[index + 1]);
-		_Binormals[index + 1] = packHalf2x16(vec2(pos1.z, tmp.y));
+		atomicAnd(_Binormals[index + 1], 0xFFFF0000u);
+		atomicOr (_Binormals[index + 1], packHalf2x16(vec2(pos1.z, 0.0)));
 	}
 	else
-	{	
+	{
 		uint index = i + (i - 1) / 2;
-		vec2 tmp = unpackHalf2x16(_Binormals[index]);
-		_Binormals[index] = packHalf2x16(vec2(tmp.x, pos1.x));
-		_Binormals[index + 1] = packHalf2x16(vec2(pos1.y, pos1.z));
+		atomicAnd(_Binormals[index], 0x0000FFFFu);
+		atomicOr (_Binormals[index], packHalf2x16(vec2(0.0, pos1.x)));
+		_Binormals[index + 1] = packHalf2x16(pos1.yz);
 	}
 }
 
@@ -194,15 +200,15 @@ void storeTangent(uint i, vec3 pos1)
 	{
 		uint index = i + i / 2;
 		_Tangents[index] = packHalf2x16(pos1.xy);
-		vec2 tmp = unpackHalf2x16(_Tangents[index + 1]);
-		_Tangents[index + 1] = packHalf2x16(vec2(pos1.z, tmp.y));
+		atomicAnd(_Tangents[index + 1], 0xFFFF0000u);
+		atomicOr (_Tangents[index + 1], packHalf2x16(vec2(pos1.z, 0.0)));
 	}
 	else
-	{	
+	{
 		uint index = i + (i - 1) / 2;
-		vec2 tmp = unpackHalf2x16(_Tangents[index]);
-		_Tangents[index] = packHalf2x16(vec2(tmp.x, pos1.x));
-		_Tangents[index + 1] = packHalf2x16(vec2(pos1.y, pos1.z));
+		atomicAnd(_Tangents[index], 0x0000FFFFu);
+		atomicOr (_Tangents[index], packHalf2x16(vec2(0.0, pos1.x)));
+		_Tangents[index + 1] = packHalf2x16(pos1.yz);
 	}
 }
 
@@ -229,10 +235,6 @@ void main()
 	if (id.y >= _Height - 1 - _Border) return;
 	if (id.z >= _Depth - 1 - _Border) return;
 
-	for (int i = 0; i < 15; i++) {
-		storePosition(idx * 15 + i, vec3(0.0));
-	}
-
 	vec3 pos = vec3(id);
 	vec3 centre = vec3(_Width, 0, _Depth) / 2.0;
 
@@ -243,7 +245,6 @@ void main()
 	int flagIndex = 0;
 	vec3 edgeVertex[12];
 
-	//Find which vertices are inside of the surface and which are outside
 	for (i = 0; i < 8; i++)
 	{
 		_DebugTuple[idx].debug1 = vec4(cube[0], cube[1], cube[2], cube[3]);
@@ -251,97 +252,72 @@ void main()
 		if (cube[i] <= _Target) flagIndex |= 1 << i;
 	}
 
-	//Find which edges are intersected by the surface
 	int edgeFlags = _CubeEdgeFlags[flagIndex];
-	
-	// no connections, return
 	if (edgeFlags == 0) return;
-	
-	//Find the point of intersection of the surface with each edge
+
 	for (i = 0; i < 12; i++)
 	{
-		//if there is an intersection on this edge
 		if ((edgeFlags & (1 << i)) != 0)
 		{
 			float offset = GetOffset(cube[edgeConnection[i].x], cube[edgeConnection[i].y]);
-
 			edgeVertex[i] = pos + (vertexOffset[edgeConnection[i].x] + offset * edgeDirection[i]);
 		}
 	}
 
 	vec3 size = vec3(_Width - 1, _Height - 1, _Depth - 1);
-	
-	//Save the triangles that were found. There can be up to five per cube
+
+	// Write each real triangle to a compact slot obtained via atomicAdd.
+	// This eliminates sparse zero-position slots and lets the draw call use
+	// the exact vertex count without CPU readback or compaction.
 	for (i = 0; i < 5; i++)
 	{
-		vec3 position;
-		vec2 uvX;
-		vec2 uvY;
-		vec2 uvZ;
-		vec2 uv;
-		
-		//If the connection table is not -1 then this a triangle.
-		if (_TriangleConnectionTable[flagIndex * 16 + 3 * i] >= 0)
-		{	
-			//packHalf2x16
-			vec4 color = vec4(sin(id.x / 10.0), cos(id.y / 10.0), sin(id.z / 10.0), 1.0);
-			position = edgeVertex[_TriangleConnectionTable[flagIndex * 16 + (3 * i + 0)]];
-			Vert v0 = CreateVertex(position, centre, size);
-			uvX = clamp((v0.position.yz + _Width / 2.0) / _Width, vec2(0.0), vec2(1.0));
-			uvY = clamp((v0.position.xz + _Height / 2.0) / _Height, vec2(0.0), vec2(1.0));
-			uvZ = clamp((v0.position.xy + _Depth / 2.0) / _Depth, vec2(0.0), vec2(1.0));
-			uv = mix(uvX, uvZ, abs(v0.normal.z));
-			uv = mix(uv, uvY, abs(v0.normal.y));
-			storePosition(idx * 15 + (3 * i + 0), v0.position.xyz / 10.0);
-			storeNormal(idx * 15 + (3 * i + 0), v0.normal);
-			//storeColor(idx * 15 + (3 * i + 0), vec4(0.2 * sin(v0.position.xyz), 1.0));
-			storeUV(idx * 15 + (3 * i + 0), uv);
-			
-			position = edgeVertex[_TriangleConnectionTable[flagIndex * 16 + (3 * i + 1)]];
-			Vert v1 = CreateVertex(position, centre, size);
-			uvX = clamp((v1.position.yz + _Width / 2.0) / _Width, vec2(0.0), vec2(1.0));
-			uvY = clamp((v1.position.xz + _Height / 2.0) / _Height, vec2(0.0), vec2(1.0));
-			uvZ = clamp((v1.position.xy + _Depth / 2.0) / _Depth, vec2(0.0), vec2(1.0));
-			uv = mix(uvX, uvZ, abs(v1.normal.z));
-			uv = mix(uv, uvY, abs(v1.normal.y));
-			storePosition(idx * 15 + (3 * i + 1), v1.position.xyz / 10.0);
-			storeNormal(idx * 15 + (3 * i + 1), v1.normal);
-			//storeColor(idx * 15 + (3 * i + 1), vec4(0.2 * sin(v1.position.xyz), 1.0));
-			storeUV(idx * 15 + (3 * i + 1), uv);
-			
-			position = edgeVertex[_TriangleConnectionTable[flagIndex * 16 + (3 * i + 2)]];
-			Vert v2 = CreateVertex(position, centre, size);
-			uvX = clamp((v2.position.yz + _Width / 2.0) / _Width, vec2(0.0), vec2(1.0));
-			uvY = clamp((v2.position.xz + _Height / 2.0) / _Height, vec2(0.0), vec2(1.0));
-			uvZ = clamp((v2.position.xy + _Depth / 2.0) / _Depth, vec2(0.0), vec2(1.0));
-			uv = mix(uvX, uvZ, abs(v2.normal.z));
-			uv = mix(uv, uvY, abs(v2.normal.y));
-			storePosition(idx * 15 + (3 * i + 2), v2.position.xyz / 10.0);
-			storeNormal(idx * 15 + (3 * i + 2), v2.normal);
-			//storeColor(idx * 15 + (3 * i + 2), vec4(0.2 * sin(v2.position.xyz), 1.0));
-			storeUV(idx * 15 + (3 * i + 2), uv);
-			
-			vec3 tangent0 = normalize(v0.position.xyz - v2.position.xyz);
-			vec3 tangent1 = normalize(v1.position.xyz - v2.position.xyz);
-			vec3 tangent2 = normalize(v1.position.xyz - v0.position.xyz);
-			
-			vec3 binormal0 = normalize(cross(v0.position.xyz, tangent0));
-			vec3 binormal1 = normalize(cross(v1.position.xyz, tangent1));
-			vec3 binormal2 = normalize(cross(v2.position.xyz, tangent2));
-			
-			storeBinormal(idx * 15 + (3 * i + 0), binormal0);
-			storeTangent(idx * 15 + (3 * i + 0), tangent0);
-			//storeUV(idx * 15 + (3 * i + 0), CreateVertex(position, centre, size).normal);
-			
-			storeBinormal(idx * 15 + (3 * i + 1), binormal1);
-			storeTangent(idx * 15 + (3 * i + 1), tangent1);
-			//storeUV(idx * 15 + (3 * i + 1), CreateVertex(position, centre, size).normal);
-			
-			storeBinormal(idx * 15 + (3 * i + 2), binormal2);
-			storeTangent(idx * 15 + (3 * i + 2), tangent2);
-			//storeUV(idx * 15 + (3 * i + 2), CreateVertex(position, centre, size).normal);
+		if (_TriangleConnectionTable[flagIndex * 16 + 3 * i] < 0) continue;
 
-			atomicAdd(_VertexCount, 3u);
-		}
+		vec3 position = edgeVertex[_TriangleConnectionTable[flagIndex * 16 + (3 * i + 0)]];
+		Vert v0 = CreateVertex(position, centre, size);
+		vec2 uvX = clamp((v0.position.yz + _Width  / 2.0) / _Width,  vec2(0.0), vec2(1.0));
+		vec2 uvY = clamp((v0.position.xz + _Height / 2.0) / _Height, vec2(0.0), vec2(1.0));
+		vec2 uvZ = clamp((v0.position.xy + _Depth  / 2.0) / _Depth,  vec2(0.0), vec2(1.0));
+		vec2 uv0 = mix(mix(uvX, uvZ, abs(v0.normal.z)), uvY, abs(v0.normal.y));
+
+		position = edgeVertex[_TriangleConnectionTable[flagIndex * 16 + (3 * i + 1)]];
+		Vert v1 = CreateVertex(position, centre, size);
+		uvX = clamp((v1.position.yz + _Width  / 2.0) / _Width,  vec2(0.0), vec2(1.0));
+		uvY = clamp((v1.position.xz + _Height / 2.0) / _Height, vec2(0.0), vec2(1.0));
+		uvZ = clamp((v1.position.xy + _Depth  / 2.0) / _Depth,  vec2(0.0), vec2(1.0));
+		vec2 uv1 = mix(mix(uvX, uvZ, abs(v1.normal.z)), uvY, abs(v1.normal.y));
+
+		position = edgeVertex[_TriangleConnectionTable[flagIndex * 16 + (3 * i + 2)]];
+		Vert v2 = CreateVertex(position, centre, size);
+		uvX = clamp((v2.position.yz + _Width  / 2.0) / _Width,  vec2(0.0), vec2(1.0));
+		uvY = clamp((v2.position.xz + _Height / 2.0) / _Height, vec2(0.0), vec2(1.0));
+		uvZ = clamp((v2.position.xy + _Depth  / 2.0) / _Depth,  vec2(0.0), vec2(1.0));
+		vec2 uv2 = mix(mix(uvX, uvZ, abs(v2.normal.z)), uvY, abs(v2.normal.y));
+
+		vec3 tangent0  = normalize(v0.position.xyz - v2.position.xyz);
+		vec3 tangent1  = normalize(v1.position.xyz - v2.position.xyz);
+		vec3 tangent2  = normalize(v1.position.xyz - v0.position.xyz);
+		vec3 binormal0 = normalize(cross(v0.position.xyz, tangent0));
+		vec3 binormal1 = normalize(cross(v1.position.xyz, tangent1));
+		vec3 binormal2 = normalize(cross(v2.position.xyz, tangent2));
+
+		uint slot = atomicAdd(_VertexCount, 3u);
+		storePosition(slot + 0u, v0.position.xyz / 10.0);
+		storeNormal   (slot + 0u, v0.normal);
+		storeUV       (slot + 0u, uv0);
+		storeBinormal (slot + 0u, binormal0);
+		storeTangent  (slot + 0u, tangent0);
+
+		storePosition(slot + 1u, v1.position.xyz / 10.0);
+		storeNormal   (slot + 1u, v1.normal);
+		storeUV       (slot + 1u, uv1);
+		storeBinormal (slot + 1u, binormal1);
+		storeTangent  (slot + 1u, tangent1);
+
+		storePosition(slot + 2u, v2.position.xyz / 10.0);
+		storeNormal   (slot + 2u, v2.normal);
+		storeUV       (slot + 2u, uv2);
+		storeBinormal (slot + 2u, binormal2);
+		storeTangent  (slot + 2u, tangent2);
 	}
 }
