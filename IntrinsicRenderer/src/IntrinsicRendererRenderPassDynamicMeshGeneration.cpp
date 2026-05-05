@@ -905,6 +905,8 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
   _INTR_PROFILE_CPU("Render Pass", "Render Dynamic Mesh Generation");
   _INTR_PROFILE_GPU("Dynamic Mesh Generation");
 
+  update(p_DeltaT);
+
   for (auto& mesh : dynamicGenerationMeshes)
   {
     // Skip once the vertex buffers are compacted and no recompute is pending.
