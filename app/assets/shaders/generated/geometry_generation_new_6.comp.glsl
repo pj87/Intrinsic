@@ -294,12 +294,25 @@ void main()
 		uvZ = clamp((v2.position.xy + _Depth  / 2.0) / _Depth,  vec2(0.0), vec2(1.0));
 		vec2 uv2 = mix(mix(uvX, uvZ, abs(v2.normal.z)), uvY, abs(v2.normal.y));
 
-		vec3 tangent0  = normalize(v0.position.xyz - v2.position.xyz);
-		vec3 tangent1  = normalize(v1.position.xyz - v2.position.xyz);
-		vec3 tangent2  = normalize(v1.position.xyz - v0.position.xyz);
-		vec3 binormal0 = normalize(cross(v0.position.xyz, tangent0));
-		vec3 binormal1 = normalize(cross(v1.position.xyz, tangent1));
-		vec3 binormal2 = normalize(cross(v2.position.xyz, tangent2));
+		// UV-based tangent: solve dPos = T*dU + B*dV for the triangle.
+		vec3 dp1 = v1.position.xyz - v0.position.xyz;
+		vec3 dp2 = v2.position.xyz - v0.position.xyz;
+		vec2 duv1 = uv1 - uv0;
+		vec2 duv2 = uv2 - uv0;
+		float det = duv1.x * duv2.y - duv1.y * duv2.x;
+		vec3 triTangent;
+		if (abs(det) > 1e-6)
+			triTangent = normalize((dp1 * duv2.y - dp2 * duv1.y) / det);
+		else
+			triTangent = normalize(dp1);
+
+		// Gram-Schmidt: project tangent perpendicular to each vertex normal.
+		vec3 tangent0  = normalize(triTangent - dot(triTangent, v0.normal) * v0.normal);
+		vec3 tangent1  = normalize(triTangent - dot(triTangent, v1.normal) * v1.normal);
+		vec3 tangent2  = normalize(triTangent - dot(triTangent, v2.normal) * v2.normal);
+		vec3 binormal0 = cross(v0.normal, tangent0);
+		vec3 binormal1 = cross(v1.normal, tangent1);
+		vec3 binormal2 = cross(v2.normal, tangent2);
 
 		uint slot = atomicAdd(_VertexCount, 3u);
 		storePosition(slot + 0u, v0.position.xyz / 10.0);
