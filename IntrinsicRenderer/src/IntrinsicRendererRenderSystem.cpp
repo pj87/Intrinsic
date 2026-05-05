@@ -181,7 +181,7 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
     
     RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
         64, 64, 64, _N(Temple), "temple_ruins.comp", "normal_generation.comp",
-        "geometry_generation_new.comp", false);
+        "geometry_generation_new.comp", false, 0.0f, 0.0f, 8);
 
     RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
         36, 36, 36, _N(Mandelbulb), "mandelbulb.comp", "normal_generation_6.comp",

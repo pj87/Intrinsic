@@ -382,9 +382,12 @@ _INTR_INLINE ComputeCallRef createComputeCallPolygonization(
     ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_TargetBuffer),
         GpuProgramType::kCompute, mesh->_targetBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_targetBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_CountBuffer),
-        GpuProgramType::kCompute, mesh->_vertexCountBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_vertexCountBufferRef));
+    if (mesh->isDynamic)
+    {
+      ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_CountBuffer),
+          GpuProgramType::kCompute, mesh->_vertexCountBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_vertexCountBufferRef));
+    }
   }
   return computeCallMarchingCubesRef;
 }
