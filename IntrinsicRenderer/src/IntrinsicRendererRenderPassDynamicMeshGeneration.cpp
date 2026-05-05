@@ -777,6 +777,45 @@ void DynamicMeshGeneration::init()
     cmd->firstInstance = 0u;
   }
 
+  // For dynamic meshes the bounding sphere is never updated by obfuscateMesh.
+  // Compute a conservative AABB analytically from grid dims and the shader's
+  // centering formula (centre = vec3(W, 0, D) / 2, positions stored / 10).
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    if (!mesh->isDynamic) continue;
+
+    const float inv = 1.0f / 10.0f;
+    const float cx = *mesh->sizeX * 0.5f;
+    const float cy = 0.0f;
+    const float cz = *mesh->sizeZ * 0.5f;
+    Math::AABB aabb(
+        glm::vec3((0.0f - cx) * inv, (0.0f - cy) * inv, (0.0f - cz) * inv),
+        glm::vec3((*mesh->sizeX - cx) * inv,
+                  (*mesh->sizeY - cy) * inv,
+                  (*mesh->sizeZ - cz) * inv));
+
+    Entity::EntityRef entityRef =
+        Entity::EntityManager::getEntityByName(*mesh->meshName);
+    if (entityRef.isValid())
+    {
+      Components::NodeRef nodeRef =
+          Components::NodeManager::getComponentForEntity(entityRef);
+      Components::MeshRef meshCompRef =
+          Components::MeshManager::getComponentForEntity(entityRef);
+      if (meshCompRef.isValid())
+      {
+        Name& meshResName = Components::MeshManager::_descMeshName(meshCompRef);
+        CResources::MeshRef meshRef =
+            CResources::MeshManager::_getResourceByName(meshResName);
+        if (meshRef.isValid() &&
+            !CResources::MeshManager::_aabbPerSubMesh(meshRef).empty())
+          CResources::MeshManager::_aabbPerSubMesh(meshRef)[0u] = aabb;
+      }
+      if (nodeRef.isValid())
+        Components::NodeManager::updateTransforms(nodeRef);
+    }
+  }
+
   // Transition normals images UNDEFINED→GENERAL for the first compute dispatch
   VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
   for (auto& mesh : dynamicGenerationMeshes)
