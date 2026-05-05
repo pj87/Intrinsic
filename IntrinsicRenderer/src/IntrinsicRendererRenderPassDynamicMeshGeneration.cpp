@@ -962,12 +962,12 @@ static void obfuscateMesh(DynamicGeneratedMesh& mesh)
     if (meshCompRef.isValid())
     {
       Name& meshResName = Components::MeshManager::_descMeshName(meshCompRef);
-      Resources::MeshRef meshRef =
-          Resources::MeshManager::_getResourceByName(meshResName);
+      CResources::MeshRef meshRef =
+          CResources::MeshManager::_getResourceByName(meshResName);
       if (meshRef.isValid() &&
-          !Resources::MeshManager::_aabbPerSubMesh(meshRef).empty())
+          !CResources::MeshManager::_aabbPerSubMesh(meshRef).empty())
       {
-        Resources::MeshManager::_aabbPerSubMesh(meshRef)[0u] = actualAABB;
+        CResources::MeshManager::_aabbPerSubMesh(meshRef)[0u] = actualAABB;
       }
     }
     if (nodeRef.isValid())
