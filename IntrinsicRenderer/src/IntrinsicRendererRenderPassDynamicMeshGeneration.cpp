@@ -998,15 +998,20 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
 
     if (dispatchCompute)
     {
-      // For animated meshes: read vertex count that the GPU wrote last frame, then
-      // reset to 0 so the new geometry dispatch can accumulate a fresh count.
-      // This is safe because the previous frame's GPU work is complete by now.
+      // Reset vertexCount to 0 via vkCmdFillBuffer so it is sequenced on the GPU,
+      // avoiding a race with the previous frame's atomicAdd compute dispatch.
+      // A plain CPU write (*countPtr = 0) races with in-flight GPU work when the
+      // fence only covers the current swapchain image, not every in-flight frame.
       if (mesh->isDynamic && mesh->isCalled)
       {
-        uint32_t* countPtr =
-            (uint32_t*)BufferManager::getGpuMemory(mesh->_vertexCountBufferRef);
-        mesh->prevFrameVertexCount = *countPtr;
-        *countPtr = 0u;
+        vkCmdFillBuffer(primaryCmdBuffer,
+                        BufferManager::_vkBuffer(mesh->_vertexCountBufferRef),
+                        0u, sizeof(uint32_t), 0u);
+        BufferManager::insertBufferMemoryBarrier(mesh->_vertexCountBufferRef,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
       }
 
       if (mesh->isCalled)
@@ -1103,12 +1108,7 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
       mesh->isCalled = true;
       mesh->needsRecompute = false;
       if (mesh->renderCounter > 1)
-      {
-        if (mesh->isDynamic && mesh->prevFrameVertexCount > 0)
-          mesh->indicesNumber = mesh->prevFrameVertexCount;
-        else
-          mesh->indicesNumber = mesh->maxIndices;
-      }
+        mesh->indicesNumber = mesh->maxIndices;
     }
     else
     {

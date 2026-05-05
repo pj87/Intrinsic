@@ -118,7 +118,6 @@ struct DynamicGeneratedMesh
   int *sizeX, *sizeY, *sizeZ;
   int sizes[4];
   int localSize;
-  uint32_t prevFrameVertexCount = 0;
   float firstParam, secondParam;
 };
 
