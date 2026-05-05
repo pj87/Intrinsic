@@ -193,7 +193,7 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
 
     RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
         64, 64, 64, _N(ProceduralHouse), "houses.comp", "normal_generation.comp",
-        "geometry_generation_new.comp", false);
+        "geometry_generation_new.comp", false, 0.0f, 0.0f, 8);
 
     RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
         2048, 2048, 1, _N(Temple_GEN), "texture_tiling_generation.comp",

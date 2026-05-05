@@ -462,7 +462,7 @@ void DynamicMeshGeneration::addDynamicGeneratedMesh(
     const int& sizeX, const int& sizeY, const int& sizeZ,
 	const Name& meshName, const Name&& voxelGenerationShader,
     const Name&& normalGenerationShader, const Name&& geometryGenerationShader,
-	bool isDynamic, float firstParam, float secondParam)
+	bool isDynamic, float firstParam, float secondParam, int localSize)
 {
   std::unique_ptr<DynamicGeneratedMesh> dynamicGenerationMesh =
       std::make_unique<DynamicGeneratedMesh>(
@@ -470,7 +470,7 @@ void DynamicMeshGeneration::addDynamicGeneratedMesh(
           std::move(meshName), std::move(voxelGenerationShader),
           std::move(normalGenerationShader),
           std::move(geometryGenerationShader),
-		  isDynamic, firstParam, secondParam);
+		  isDynamic, firstParam, secondParam, localSize);
 
   dynamicGenerationMeshes.push_back(std::move(dynamicGenerationMesh));
 }
@@ -819,7 +819,9 @@ void DynamicMeshGeneration::postInit()
     PipelineManager::createResources(pipelinesToCreate);
 
     const glm::uvec3 computeDim = glm::uvec3(
-        sqrt(mesh->sizes[0]), sqrt(mesh->sizes[1]), sqrt(mesh->sizes[2]));
+        mesh->sizes[0] / mesh->localSize,
+        mesh->sizes[1] / mesh->localSize,
+        mesh->sizes[2] / mesh->localSize);
 
     ComputeCallRef _computeCallVoxelGenerationRef =
         createComputeCallVoxelGeneration(mesh, computeDim);
