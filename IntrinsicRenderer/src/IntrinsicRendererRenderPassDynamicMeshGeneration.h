@@ -89,6 +89,7 @@ struct DynamicGeneratedMesh
   BufferRef _sizesBufferRef;
   BufferRef _targetBufferRef;
   BufferRef _noiseParametersRef;
+  BufferRef _vertexCountBufferRef;
 
   ImageRef _normalsImageRef;
   ImageRef _gradient3dImageRef;
@@ -114,6 +115,7 @@ struct DynamicGeneratedMesh
   int *sizeX, *sizeY, *sizeZ;
   int sizes[4];
   int localSize;
+  uint32_t prevFrameVertexCount = 0;
   float firstParam, secondParam;
 };
 

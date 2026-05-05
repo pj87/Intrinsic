@@ -382,6 +382,9 @@ _INTR_INLINE ComputeCallRef createComputeCallPolygonization(
     ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_TargetBuffer),
         GpuProgramType::kCompute, mesh->_targetBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_targetBufferRef));
+    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_CountBuffer),
+        GpuProgramType::kCompute, mesh->_vertexCountBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_vertexCountBufferRef));
   }
   return computeCallMarchingCubesRef;
 }
@@ -620,6 +623,17 @@ void DynamicMeshGeneration::init()
     mesh->_debugBufferRef = _debugBufferRef;
     buffersToCreate.push_back(_debugBufferRef);
 
+    BufferRef _vertexCountBufferRef = BufferManager::createBuffer(_N(_CountBuffer));
+    {
+      BufferManager::resetToDefault(_vertexCountBufferRef);
+      BufferManager::_descMemoryPoolType(_vertexCountBufferRef) =
+          MemoryPoolType::kStaticStagingBuffers;
+      BufferManager::_descBufferType(_vertexCountBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_vertexCountBufferRef) = sizeof(uint32_t);
+    }
+    mesh->_vertexCountBufferRef = _vertexCountBufferRef;
+    buffersToCreate.push_back(_vertexCountBufferRef);
+
     // Vertex attribute output buffers written by the polygonization compute shader.
     // Each slot holds up to 1 vertex; each voxel cube contributes up to 15 slots.
     const uint32_t maxSlots =
@@ -738,6 +752,15 @@ void DynamicMeshGeneration::init()
 
   BufferManager::createResources(buffersToCreate);
   ImageManager::createResources(imgsToCreate);
+
+  // Initialize vertex count buffers to zero
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    uint32_t zero = 0u;
+    uint32_t* countPtr =
+        (uint32_t*)BufferManager::getGpuMemory(mesh->_vertexCountBufferRef);
+    *countPtr = zero;
+  }
 
   // Transition normals images UNDEFINED→GENERAL for the first compute dispatch
   VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
@@ -924,6 +947,17 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
 
     if (dispatchCompute)
     {
+      // For animated meshes: read vertex count that the GPU wrote last frame, then
+      // reset to 0 so the new geometry dispatch can accumulate a fresh count.
+      // This is safe because the previous frame's GPU work is complete by now.
+      if (mesh->isDynamic && mesh->isCalled)
+      {
+        uint32_t* countPtr =
+            (uint32_t*)BufferManager::getGpuMemory(mesh->_vertexCountBufferRef);
+        mesh->prevFrameVertexCount = *countPtr;
+        *countPtr = 0u;
+      }
+
       if (mesh->isCalled)
       {
         ImageManager::insertImageMemoryBarrier(mesh->_normalsImageRef,
@@ -974,10 +1008,13 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
 
       mesh->isCalled = true;
       mesh->needsRecompute = false;
-      // If params changed after a previous compaction, reset the vertex count so
-      // the new (uncompacted) data is drawn correctly until next compaction pass.
       if (mesh->renderCounter > 1)
-        mesh->indicesNumber = mesh->maxIndices;
+      {
+        if (mesh->isDynamic && mesh->prevFrameVertexCount > 0)
+          mesh->indicesNumber = mesh->prevFrameVertexCount;
+        else
+          mesh->indicesNumber = mesh->maxIndices;
+      }
     }
     else
     {

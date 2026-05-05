@@ -69,10 +69,13 @@ layout(binding = 11) buffer _SizesBuffer
 	int _Border;
 };
 layout(binding = 12) buffer _TargetBuffer
-{	
+{
 	float _Target;
 };
-
+layout(binding = 13) buffer _CountBuffer
+{
+	uint _VertexCount;
+};
 
 // edgeConnection lists the index of the endpoint vertices for each of the 12 edges of the cube
 ivec2 edgeConnection[12] = {ivec2(0, 1), ivec2(1, 2), ivec2(2, 3), ivec2(3, 0),
@@ -337,6 +340,8 @@ void main()
 			storeBinormal(idx * 15 + (3 * i + 2), binormal2);
 			storeTangent(idx * 15 + (3 * i + 2), tangent2);
 			//storeUV(idx * 15 + (3 * i + 2), CreateVertex(position, centre, size).normal);
+
+			atomicAdd(_VertexCount, 3u);
 		}
 	}
 }
