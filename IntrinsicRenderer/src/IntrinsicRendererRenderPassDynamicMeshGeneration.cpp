@@ -938,6 +938,41 @@ static void obfuscateMesh(DynamicGeneratedMesh& mesh)
   mesh.indicesNumber = j;
   _INTR_LOG_INFO("obfuscateMesh '%s': %u / %u real vertices",
                  mesh.meshName->getString().c_str(), j, maxSlots);
+
+  // Compute actual AABB from the compacted half-float positions so that the
+  // frustum-culling bounding sphere matches the real generated geometry.
+  Math::AABB actualAABB;
+  Math::initAABB(actualAABB);
+  for (uint32_t i = 0u; i < j; ++i)
+  {
+    glm::vec3 p(glm::unpackHalf2x16((uint32_t)posBuf[i*3u+0u]).x,
+                glm::unpackHalf2x16((uint32_t)posBuf[i*3u+1u]).x,
+                glm::unpackHalf2x16((uint32_t)posBuf[i*3u+2u]).x);
+    actualAABB.min = glm::min(actualAABB.min, p);
+    actualAABB.max = glm::max(actualAABB.max, p);
+  }
+
+  Entity::EntityRef entityRef = Entity::EntityManager::getEntityByName(*mesh.meshName);
+  if (entityRef.isValid())
+  {
+    Components::NodeRef nodeRef =
+        Components::NodeManager::getComponentForEntity(entityRef);
+    Components::MeshRef meshCompRef =
+        Components::MeshManager::getComponentForEntity(entityRef);
+    if (meshCompRef.isValid())
+    {
+      Name& meshResName = Components::MeshManager::_descMeshName(meshCompRef);
+      Resources::MeshRef meshRef =
+          Resources::MeshManager::_getResourceByName(meshResName);
+      if (meshRef.isValid() &&
+          !Resources::MeshManager::_aabbPerSubMesh(meshRef).empty())
+      {
+        Resources::MeshManager::_aabbPerSubMesh(meshRef)[0u] = actualAABB;
+      }
+    }
+    if (nodeRef.isValid())
+      Components::NodeManager::updateTransforms(nodeRef);
+  }
 }
 
 void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
