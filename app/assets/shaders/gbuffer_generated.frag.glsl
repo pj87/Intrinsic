@@ -35,40 +35,26 @@ layout(location = 1) in vec3 inTangent;
 layout(location = 2) in vec3 inBinormal;
 layout(location = 3) in vec3 inColor;
 layout(location = 4) in vec2 inUV0;
-layout(location = 5) in vec3 inPosition;
-layout(location = 6) in vec3 inViewPosition;
-layout(location = 7) in vec3 inNormalTPM;
 
 // Output
 OUTPUT
 
-vec3 tex3D(vec3 pos, vec3 nor, sampler2D s) {
-    return texture( s, pos.yz).xyz*abs(nor.x)+
-           texture( s, pos.xz).xyz*abs(nor.y)+
-           texture( s, pos.xy).xyz*abs(nor.z);
-}
-
 void main()
 {
-  vec3 geoNormal = normalize(inNormal);
-  vec3 _triW = abs(geoNormal);
-  _triW /= (_triW.x + _triW.y + _triW.z + 0.0001);
-  vec3 _pos = inPosition;
+  const mat3 TBN = mat3(inTangent, inBinormal, inNormal);
+  const vec2 uv0 = inUV0;
 
   GBuffer gbuffer;
   {
-    vec3 _albedo = texture(albedoTex, _pos.yz).rgb * _triW.x +
-                   texture(albedoTex, _pos.xz).rgb * _triW.y +
-                   texture(albedoTex, _pos.xy).rgb * _triW.z;
-    gbuffer.albedo = vec4(_albedo, 1.0) * uboPerInstance.colorTint;
-    gbuffer.normal = geoNormal;
-    const vec2 pbr = tex3D(inPosition, geoNormal, pbrTex).rg;
+    gbuffer.albedo = texture(albedoTex, uv0) * uboPerInstance.colorTint;
+    gbuffer.normal = normalize(TBN * textureNormal(normalTex, uv0));
+    const vec2 pbr = texture(pbrTex, uv0).rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
-    gbuffer.specular = uboPerMaterial.pbrBias.g;
+    gbuffer.specular = 0.5 + uboPerMaterial.pbrBias.g;
     gbuffer.roughness = adjustRoughness(pbr.g + uboPerMaterial.pbrBias.b,
                                         uboPerMaterial.data1.x);
     gbuffer.materialBufferIdx = uboPerMaterial.data0.x;
-    gbuffer.emissive = tex3D(inPosition, geoNormal, emissiveTex).r * 0.1;
+    gbuffer.emissive = texture(emissiveTex, uv0).r;
     gbuffer.occlusion = 1.0;
   }
   writeGBuffer(gbuffer, outAlbedo, outNormal, outParameter0);

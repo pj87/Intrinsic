@@ -3,7 +3,6 @@
     "properties": {
         "name": "mandelbulb",
         "materialPassMask": [
-            "GBufferDefault",
             "GBufferGenerated",
             "GBufferWireframe",
             "Shadow",

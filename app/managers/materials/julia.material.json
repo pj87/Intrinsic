@@ -3,8 +3,7 @@
     "properties": {
         "name": "julia",
         "materialPassMask": [
-            "GBufferDefault",
-			"GBufferGenerated",
+            "GBufferGenerated",
             "GBufferWireframe",
             "Shadow",
             "PerPixelPicking"

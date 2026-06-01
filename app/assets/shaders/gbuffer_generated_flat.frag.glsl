@@ -65,7 +65,7 @@ void main()
     gbuffer.normal = geoNormal;
     const vec2 pbr = tex3D(inPosition, geoNormalM, pbrTex).rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
-    gbuffer.specular = uboPerMaterial.pbrBias.g;
+    gbuffer.specular = 0.5 + uboPerMaterial.pbrBias.g;
     gbuffer.roughness = adjustRoughness(pbr.g + uboPerMaterial.pbrBias.b,
                                         uboPerMaterial.data1.x);
     gbuffer.materialBufferIdx = uboPerMaterial.data0.x;
