@@ -43,18 +43,38 @@ layout(location = 7) in vec3 inNormalTPM;
 OUTPUT
 
 vec3 tex3D(vec3 pos, vec3 nor, sampler2D s) {
-    return texture( s, pos.yz).xyz*abs(nor.x)+
-           texture( s, pos.xz).xyz*abs(nor.y)+
-           texture( s, pos.xy).xyz*abs(nor.z);
+    return texture(s, pos.yz).xyz * abs(nor.x) +
+           texture(s, pos.xz).xyz * abs(nor.y) +
+           texture(s, pos.xy).xyz * abs(nor.z);
+}
+
+vec3 tex3DNormal(vec3 pos, vec3 nor, sampler2D s) {
+    return textureNormal(s, pos.yz) * abs(nor.x) +
+           textureNormal(s, pos.xz) * abs(nor.y) +
+           textureNormal(s, pos.xy) * abs(nor.z);
+}
+
+mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv) {
+    vec3 dp1 = dFdx(p);
+    vec3 dp2 = dFdy(p);
+    vec2 duv1 = dFdx(uv);
+    vec2 duv2 = dFdy(uv);
+    vec3 dp2perp = cross(dp2, N);
+    vec3 dp1perp = cross(N, dp1);
+    vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+    float invmax = inversesqrt(max(dot(T, T), dot(B, B)));
+    return mat3(T * invmax, B * invmax, N);
 }
 
 void main()
 {
-  vec3 geoNormal  = normalize(-inNormal);
   vec3 geoNormalM = normalize(cross(dFdx(inPosition), dFdy(inPosition)));
   vec3 _triW = abs(geoNormalM);
   _triW /= (_triW.x + _triW.y + _triW.z + 0.0001);
   vec3 _pos = inPosition;
+
+  const mat3 TBN = cotangent_frame(-inNormal, inViewPosition, inUV0);
 
   GBuffer gbuffer;
   {
@@ -62,7 +82,7 @@ void main()
                    texture(albedoTex, _pos.xz).rgb * _triW.y +
                    texture(albedoTex, _pos.xy).rgb * _triW.z;
     gbuffer.albedo = vec4(_albedo, 1.0) * uboPerInstance.colorTint;
-    gbuffer.normal = geoNormal;
+    gbuffer.normal = normalize(TBN * tex3DNormal(inPosition, geoNormalM, normalTex));
     const vec2 pbr = tex3D(inPosition, geoNormalM, pbrTex).rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
     gbuffer.specular = 0.5 + uboPerMaterial.pbrBias.g;
