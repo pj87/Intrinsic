@@ -74,7 +74,7 @@ void main()
   _triW /= (_triW.x + _triW.y + _triW.z + 0.0001);
   vec3 _pos = inPosition;
 
-  const mat3 TBN = cotangent_frame(-inNormal, inViewPosition, inUV0);
+  const mat3 TBN = cotangent_frame(-inNormal, inPosition, inUV0);
 
   GBuffer gbuffer;
   {
@@ -82,7 +82,7 @@ void main()
                    texture(albedoTex, _pos.xz).rgb * _triW.y +
                    texture(albedoTex, _pos.xy).rgb * _triW.z;
     gbuffer.albedo = vec4(_albedo, 1.0) * uboPerInstance.colorTint;
-    gbuffer.normal = normalize(TBN * tex3DNormal(inPosition, geoNormalM, normalTex));
+    gbuffer.normal = normalize(TBN * tex3DNormal(inPosition, inNormalTPM, normalTex));
     const vec2 pbr = tex3D(inPosition, geoNormalM, pbrTex).rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
     gbuffer.specular = 0.5 + uboPerMaterial.pbrBias.g;
