@@ -31,13 +31,8 @@ layout(binding = 6) uniform sampler2D emissiveTex;
 
 // Input
 layout(location = 0) in vec3 inNormal;
-layout(location = 1) in vec3 inTangent;
-layout(location = 2) in vec3 inBinormal;
-layout(location = 3) in vec3 inColor;
-layout(location = 4) in vec2 inUV0;
 layout(location = 5) in vec3 inPosition;
 layout(location = 6) in vec3 inViewPosition;
-layout(location = 7) in vec3 inNormalTPM;
 
 // Output
 OUTPUT
@@ -74,7 +69,11 @@ void main()
   _triW /= (_triW.x + _triW.y + _triW.z + 0.0001);
   vec3 _pos = inPosition;
 
-  const mat3 TBN = cotangent_frame(-inNormal, inPosition, inUV0);
+  // Per-face TBNs: each uses the UV coords for that projection face so the
+  // cotangent frame correctly maps tangent-space normals to view space.
+  const mat3 TBN_X = cotangent_frame(inNormal, inViewPosition, inPosition.yz);
+  const mat3 TBN_Y = cotangent_frame(inNormal, inViewPosition, inPosition.xz);
+  const mat3 TBN_Z = cotangent_frame(inNormal, inViewPosition, inPosition.yx);
 
   GBuffer gbuffer;
   {
@@ -82,7 +81,14 @@ void main()
                    texture(albedoTex, _pos.xz).rgb * _triW.y +
                    texture(albedoTex, _pos.xy).rgb * _triW.z;
     gbuffer.albedo = vec4(_albedo, 1.0) * uboPerInstance.colorTint;
-    gbuffer.normal = normalize(TBN * tex3DNormal(inPosition, inNormalTPM, normalTex));
+    vec3 nX = TBN_X * textureNormal(normalTex, inPosition.yz).xyz;
+    vec3 nY = TBN_Y * textureNormal(normalTex, inPosition.xz).xyz;
+    vec3 nZ = TBN_Z * textureNormal(normalTex, inPosition.yx).xyz;
+    // SDF voxels are stored as -SDF, so the gradient (inNormal) is inward.
+    // Reflect about the tangent plane to flip base direction outward while
+    // preserving the tangential bump perturbation.
+    vec3 n = normalize(nX * _triW.x + nY * _triW.y + nZ * _triW.z);
+    gbuffer.normal = reflect(n, inNormal);
     const vec2 pbr = tex3D(inPosition, geoNormalM, pbrTex).rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
     gbuffer.specular = 0.5 + uboPerMaterial.pbrBias.g;
