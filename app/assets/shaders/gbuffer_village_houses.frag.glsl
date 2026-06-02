@@ -80,28 +80,28 @@ vec3 tex3DBricks(vec3 pos, vec3 nor, sampler2D s) {
 	
 	vec2 posX = pos.zy + vec2(3.5, 0.0);
 	vec2 posZ = pos.xy + vec2(3.5, 0.0);
-	vec2 posY = vec2(posX.y, posZ.x);
-	
+	vec2 posY = vec2(pos.x + 3.5, pos.z + 3.5);
+
 	posX *= 0.075;
 	posY *= 0.075;
 	posZ *= 0.075;
-	
+
     return texture( s, posX.xy).xyz*abs(nor.x)+
            texture( s, posY.xy).xyz*abs(nor.y)+
            texture( s, posZ.xy).xyz*abs(nor.z);
-	
+
 }
 
 vec3 tex3DBricksNormal(vec3 pos, vec3 nor, sampler2D s) {
 
 	vec2 posX = pos.zy + vec2(3.5, 0.0);
 	vec2 posZ = pos.xy + vec2(3.5, 0.0);
-	vec2 posY = vec2(posX.y, posZ.x);
-	
+	vec2 posY = vec2(pos.x + 3.5, pos.z + 3.5);
+
 	posX *= 0.075;
 	posY *= 0.075;
 	posZ *= 0.075;
-	
+
     return textureNormal( s, posX.xy).xyz*abs(nor.x)+
            textureNormal( s, posY.xy).xyz*abs(nor.y)+
            textureNormal( s, posZ.xy).xyz*abs(nor.z);
@@ -206,6 +206,22 @@ vec3 tex3DFloorNormal(vec3 pos, vec3 nor, sampler2D s) {
     return textureNormal( s, posX.xy).xyz*abs(nor.x)+
            textureNormal( s, posY.xy).xyz*abs(nor.y)+
            textureNormal( s, posZ.xy).xyz*abs(nor.z);
+}
+
+vec3 tex3DRoof(vec3 pos, vec3 nor, sampler2D s) {
+    vec3 blend = pow(abs(nor), vec3(8.0));
+    blend /= (blend.x + blend.y + blend.z);
+    return texture(s, pos.yz).xyz * blend.x +
+           texture(s, pos.xz).xyz * blend.y +
+           texture(s, pos.yx).xyz * blend.z;
+}
+
+vec3 tex3DRoofNormal(vec3 pos, vec3 nor, sampler2D s) {
+    vec3 blend = pow(abs(nor), vec3(8.0));
+    blend /= (blend.x + blend.y + blend.z);
+    return textureNormal(s, pos.yz).xyz * blend.x +
+           textureNormal(s, pos.xz).xyz * blend.y +
+           textureNormal(s, pos.yx).xyz * blend.z;
 }
 
 vec3 tex3DBlendMask(vec3 pos, vec3 nor, sampler2D s) {
@@ -362,12 +378,13 @@ void main()
   vec3 normal = normal0.rgb;
   
   float emissive = 0.1;
-  
+  float specular = uboPerMaterial.pbrBias.g;
+
   //vec3 normal = blend(normal0.rgb * 1.0, normal1.rgb * 1.0, blendMask, noise);
   //vec3 pbr = blend(pbr0.rgb * 1.0, pbr1.rgb * 1.0, blendMask, noise);
 
   GBuffer gbuffer;
-  {   
+  {
    //door
 	if (inPosition.y < 0.7 && inPosition.z > 0.8 && inPosition.z < 1.3 && inPosition.x < -2.0 || isWindow(inPosition))
 	{
@@ -398,26 +415,26 @@ void main()
 	}
 	else  // roof
 	{
-		albedo = albedo1.rgb;
-		normal = normal1.rgb;
-		pbr = pbr1.rgb;
+		albedo = texture(albedoTex1, inPosition.xz).xyz;
+		vec3 tn = textureNormal(normalTex1, inPosition.xz);
+		normal = normalize(inNormalTPM + vec3(tn.x, 0.0, tn.y) * 5.0);
+		pbr = vec3(0.0, 0.0, 0.0);  // non-metallic, roughness = 0+bias = 0.3
+		specular = 0.5;  // F0 = 0.08 * 0.5 = 0.04 (standard dielectric)
 	}
-	
+
 	if(isWindowGlass(inPosition))
 	{
-		
 		albedo = albedo1.rgb;
 		normal = normal1.rgb;
 		pbr = pbr1.rgb;
 		emissive = 1.0;
-		
 	}
 	
 	gbuffer.albedo = vec4(albedo, 1.0);
 	gbuffer.normal = normal;
 	const vec2 pbr = pbr.rg;
     gbuffer.metalMask = pbr.r + uboPerMaterial.pbrBias.r;
-    gbuffer.specular = uboPerMaterial.pbrBias.g;
+    gbuffer.specular = specular;
     gbuffer.roughness = adjustRoughness(pbr.g + uboPerMaterial.pbrBias.b,
                                         uboPerMaterial.data1.x);
     gbuffer.materialBufferIdx = uboPerMaterial.data0.x;
