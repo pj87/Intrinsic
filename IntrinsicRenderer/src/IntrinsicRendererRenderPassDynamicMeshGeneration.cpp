@@ -883,7 +883,26 @@ void DynamicMeshGeneration::postInit()
   ComputeCallManager::createResources(computeCallsToCreate);
 }
 
-void DynamicMeshGeneration::onReinitRendering() {}
+void DynamicMeshGeneration::onReinitRendering()
+{
+  // After a renderer reinit, MeshManager::createResources re-creates all draw
+  // calls from scratch, discarding the vertex-buffer pointers that were wired
+  // in during the first two render frames.  Reset renderCounter so the next
+  // frame re-enters the wiring path.  For dynamic meshes also reset
+  // indicesNumber and needsRecompute so the full compute→obfuscate→wire cycle
+  // runs correctly from the start.
+  for (auto& mesh : dynamicGenerationMeshes)
+  {
+    if (!mesh->isCalled)
+      continue;
+    mesh->renderCounter = 1;
+    if (mesh->isDynamic)
+    {
+      mesh->indicesNumber = mesh->maxIndices;
+      mesh->needsRecompute = true;
+    }
+  }
+}
 
 void DynamicMeshGeneration::destroy() {}
 

@@ -396,11 +396,11 @@ void main()
 		//gbuffer.normal = normal;
 		//gbuffer.pbr = pbr;
 	}
-	else
+	else  // roof
 	{
-		albedo = albedo4;
-		normal = normal4;
-		pbr = pbr4;
+		albedo = albedo1.rgb;
+		normal = normal1.rgb;
+		pbr = pbr1.rgb;
 	}
 	
 	if(isWindowGlass(inPosition))
