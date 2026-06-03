@@ -345,7 +345,7 @@ void main()
   vec3 normal1 = tex3DWallNormal(inPosition, inNormalTPM, normalTex0);
   vec3 normal2 = tex3DWoodNormal(inPosition, inNormalTPM, normalTex0);
   vec3 normal3 = tex3DFloorNormal(inPosition, inNormalTPM, normalTex0);
-  vec3 normal4 = tex3D(inPosition, inNormalTPM, normalTex1);
+  vec3 normal4 = tex3DNormal(inPosition, inNormalTPM, normalTex1);
   vec3 normal5 = tex3D(inPosition, inNormalTPM, normalTex2) * 0.1;
   
   vec3 pbrDef = tex3DNormal(inPosition, inNormalTPM, pbrTex0);

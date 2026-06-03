@@ -31,7 +31,7 @@ vec3 getNormal(in ivec2 uv)
 	float dX = tr + 2.0 * r + br - tl - 2.0 * l - bl;
 	float dY = bl + 2.0 * b + br - tl - 2.0 * t - tr;
 	
-	float bumpness = 0.03125;
+	float bumpness = 0.125;
 	if (bumpness == 0.0) {
 		bumpness = 0.0009765625;
 	}
