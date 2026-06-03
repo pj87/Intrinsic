@@ -1,0 +1,10 @@
+{
+    "name": "ProceduralHouse_GEN",
+    "properties": {
+        "width": 2048,
+        "height": 2048,
+        "depth": 1,
+        "shader": "texture_village_house_generation.comp",
+        "isDynamic": false
+    }
+}

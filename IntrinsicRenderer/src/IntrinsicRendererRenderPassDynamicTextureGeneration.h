@@ -113,6 +113,8 @@ struct DynamicTextureGeneration
 
   static bool isOverridenTexture(const Name&);
 
+  static void loadFromMultipleFiles(const char* p_Path);
+
   static void init();
   static void onReinitRendering();
 

@@ -179,73 +179,11 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
     RenderPass::Clustering::init();
     RenderPass::VolumetricLighting::init();
     
-    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
-        64, 64, 64, _N(Temple), "temple_ruins.comp", "normal_generation.comp",
-        "geometry_generation_new.comp", false, 0.0f, 0.0f, 8);
+    RenderPass::DynamicMeshGeneration::loadFromMultipleFiles(
+        "managers/procedural_meshes/");
 
-    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
-        36, 36, 36, _N(Mandelbulb), "mandelbulb.comp", "normal_generation_smooth.comp",
-        "geometry_generation_full_tbn.comp", true);
-
-    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
-        36, 36, 36, _N(Julia), "julia.comp", "normal_generation_smooth.comp",
-        "geometry_generation_full_tbn.comp", true);
-
-    RenderPass::DynamicMeshGeneration::addDynamicGeneratedMesh(
-        64, 64, 64, _N(ProceduralHouse), "houses.comp", "normal_generation.comp",
-        "geometry_generation_new.comp", false, 1.01f, -5.0f, 8);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(Temple_GEN), "texture_tiling_generation.comp",
-        true);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(Temple_GEN), _N(Temple_NRM_GEN),
-        "texture_nrm_flat_generation.comp", true);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(Temple_GEN), _N(Temple_PBR_GEN),
-        "texture_pbr_albedo_generation.comp", true);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(ProceduralHouse_GEN),
-        "texture_village_house_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(ProceduralHouse_GEN), _N(ProceduralHouse_NRM_GEN),
-        "texture_nrm_bump_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(ProceduralHouse_GEN), _N(ProceduralHouse_PBR_GEN),
-        "texture_pbr_albedo_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(roof_GEN),
-        "texture_roof_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(roof_GEN), _N(roof_NRM_GEN),
-        "texture_nrm_bump_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(roof_GEN), _N(roof_PBR_GEN),
-        "texture_pbr_albedo_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(wood_GEN),
-        "texture_wood_grain_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(wood_GEN), _N(wood_NRM_GEN),
-        "texture_nrm_bump_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(wood_GEN), _N(wood_PBR_GEN),
-        "texture_pbr_albedo_generation.comp", false);
-
-    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
-        2048, 2048, 1, _N(terrain_BLEND_GEN),
-        "texture_blend_generation.comp", false);
+    RenderPass::DynamicTextureGeneration::loadFromMultipleFiles(
+        "managers/procedural_textures/");
 
     RenderPass::DynamicTextureGeneration::init();
     Renderer::RenderPass::DynamicTextureGeneration::postInit();

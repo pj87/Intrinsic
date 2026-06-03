@@ -1,0 +1,15 @@
+{
+    "name": "Temple",
+    "properties": {
+        "sizeX": 64,
+        "sizeY": 64,
+        "sizeZ": 64,
+        "voxelShader": "temple_ruins.comp",
+        "normalShader": "normal_generation.comp",
+        "geometryShader": "geometry_generation_new.comp",
+        "isDynamic": false,
+        "param0": 0.0,
+        "param1": 0.0,
+        "localSize": 8
+    }
+}

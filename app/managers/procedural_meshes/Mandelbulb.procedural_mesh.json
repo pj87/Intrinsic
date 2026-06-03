@@ -1,0 +1,15 @@
+{
+    "name": "Mandelbulb",
+    "properties": {
+        "sizeX": 36,
+        "sizeY": 36,
+        "sizeZ": 36,
+        "voxelShader": "mandelbulb.comp",
+        "normalShader": "normal_generation_smooth.comp",
+        "geometryShader": "geometry_generation_full_tbn.comp",
+        "isDynamic": true,
+        "param0": 0.0,
+        "param1": 0.0,
+        "localSize": 6
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "name": "ProceduralHouse_NRM_GEN",
+    "properties": {
+        "sourceTexture": "ProceduralHouse_GEN",
+        "width": 2048,
+        "height": 2048,
+        "depth": 1,
+        "shader": "texture_nrm_bump_generation.comp",
+        "isDynamic": false
+    }
+}

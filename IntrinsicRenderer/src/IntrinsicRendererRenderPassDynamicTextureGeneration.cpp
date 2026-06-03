@@ -301,6 +301,82 @@ void DynamicTextureGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
   }
 }
 
+void DynamicTextureGeneration::loadFromMultipleFiles(const char* p_Path)
+{
+  char* readBuffer =
+      (char*)Memory::Tlsf::MainAllocator::allocate(65536u);
+
+  // Two passes: primary textures first, then textures derived from a source.
+  for (int pass = 0; pass < 2; ++pass)
+  {
+    tinydir_dir dir;
+    if (tinydir_open(&dir, p_Path) == -1)
+    {
+      if (pass == 0)
+        _INTR_LOG_WARNING(
+            "DynamicTextureGeneration: directory not found: %s", p_Path);
+      break;
+    }
+
+    while (dir.has_next)
+    {
+      tinydir_file file;
+      tinydir_readfile(&dir, &file);
+
+      if (!file.is_dir &&
+          strstr(file.name, ".procedural_texture.json") != nullptr)
+      {
+        FILE* fp = fopen(file.path, "rb");
+        if (fp != nullptr)
+        {
+          rapidjson::Document doc;
+          {
+            rapidjson::FileReadStream is(fp, readBuffer, 65536u);
+            doc.ParseStream(is);
+          }
+          fclose(fp);
+
+          const char* name = doc["name"].GetString();
+          const rapidjson::Value& p = doc["properties"];
+
+          bool hasSource =
+              p.HasMember("sourceTexture") &&
+              p["sourceTexture"].GetStringLength() > 0;
+
+          // Pass 0 handles primaries (no source), pass 1 handles derived.
+          if (static_cast<bool>(pass == 0) != hasSource)
+          {
+            int width  = p.HasMember("width")  ? p["width"].GetInt()  : 2048;
+            int height = p.HasMember("height") ? p["height"].GetInt() : 2048;
+            int depth  = p.HasMember("depth")  ? p["depth"].GetInt()  : 1;
+            bool isDynamic =
+                p.HasMember("isDynamic") ? p["isDynamic"].GetBool() : false;
+
+            if (hasSource)
+            {
+              addDynamicGeneradtedTexture(
+                  width, height, depth,
+                  Name(p["sourceTexture"].GetString()), Name(name),
+                  p["shader"].GetString(), isDynamic);
+            }
+            else
+            {
+              addDynamicGeneradtedTexture(width, height, depth, Name(name),
+                                          p["shader"].GetString(), isDynamic);
+            }
+          }
+        }
+      }
+
+      tinydir_next(&dir);
+    }
+
+    tinydir_close(&dir);
+  }
+
+  Memory::Tlsf::MainAllocator::free(readBuffer);
+}
+
 } // namespace RenderPass
 } // namespace Renderer
 } // namespace Intrinsic

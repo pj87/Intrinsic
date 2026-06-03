@@ -132,6 +132,8 @@ struct DynamicMeshGeneration
 									   float firstParam = 0.0, float secondParam = 0.0,
 									   int localSize = 6);
 
+  static void loadFromMultipleFiles(const char* p_Path);
+
   static float getVoxel(DynamicGeneratedMesh& mesh, int x, int y, int z);
   static glm::vec3 getNormal(DynamicGeneratedMesh& mesh, int x, int y, int z);
   static void aquireVoxelsAndNormals(DynamicGeneratedMesh& mesh);

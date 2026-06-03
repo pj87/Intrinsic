@@ -1,0 +1,11 @@
+{
+    "name": "roof_PBR_GEN",
+    "properties": {
+        "sourceTexture": "roof_GEN",
+        "width": 2048,
+        "height": 2048,
+        "depth": 1,
+        "shader": "texture_pbr_albedo_generation.comp",
+        "isDynamic": false
+    }
+}

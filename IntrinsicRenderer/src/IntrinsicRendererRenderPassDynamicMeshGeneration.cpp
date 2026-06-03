@@ -1373,6 +1373,68 @@ glm::vec3 DynamicMeshGeneration::getNormal(DynamicGeneratedMesh& mesh,
   return glm::vec3(buf[index], buf[index + 1], buf[index + 2]);
 }
 
+void DynamicMeshGeneration::loadFromMultipleFiles(const char* p_Path)
+{
+  char* readBuffer =
+      (char*)Memory::Tlsf::MainAllocator::allocate(65536u);
+
+  tinydir_dir dir;
+  if (tinydir_open(&dir, p_Path) == -1)
+  {
+    _INTR_LOG_WARNING("DynamicMeshGeneration: directory not found: %s",
+                      p_Path);
+    Memory::Tlsf::MainAllocator::free(readBuffer);
+    return;
+  }
+
+  while (dir.has_next)
+  {
+    tinydir_file file;
+    tinydir_readfile(&dir, &file);
+
+    if (!file.is_dir &&
+        strstr(file.name, ".procedural_mesh.json") != nullptr)
+    {
+      FILE* fp = fopen(file.path, "rb");
+      if (fp != nullptr)
+      {
+        rapidjson::Document doc;
+        {
+          rapidjson::FileReadStream is(fp, readBuffer, 65536u);
+          doc.ParseStream(is);
+        }
+        fclose(fp);
+
+        const char* name = doc["name"].GetString();
+        const rapidjson::Value& p = doc["properties"];
+
+        int sizeX = p.HasMember("sizeX") ? p["sizeX"].GetInt() : 64;
+        int sizeY = p.HasMember("sizeY") ? p["sizeY"].GetInt() : 64;
+        int sizeZ = p.HasMember("sizeZ") ? p["sizeZ"].GetInt() : 64;
+        bool isDynamic =
+            p.HasMember("isDynamic") ? p["isDynamic"].GetBool() : false;
+        float param0 =
+            p.HasMember("param0") ? p["param0"].GetFloat() : 0.0f;
+        float param1 =
+            p.HasMember("param1") ? p["param1"].GetFloat() : 0.0f;
+        int localSize =
+            p.HasMember("localSize") ? p["localSize"].GetInt() : 6;
+
+        addDynamicGeneratedMesh(sizeX, sizeY, sizeZ, Name(name),
+                                p["voxelShader"].GetString(),
+                                p["normalShader"].GetString(),
+                                p["geometryShader"].GetString(),
+                                isDynamic, param0, param1, localSize);
+      }
+    }
+
+    tinydir_next(&dir);
+  }
+
+  tinydir_close(&dir);
+  Memory::Tlsf::MainAllocator::free(readBuffer);
+}
+
 } // namespace RenderPass
 } // namespace Renderer
 } // namespace Intrinsic
