@@ -415,11 +415,16 @@ void main()
 	}
 	else  // roof
 	{
-		albedo = texture(albedoTex1, inPosition.xz).xyz;
-		vec3 tn = textureNormal(normalTex1, inPosition.xz);
-		normal = normalize(inNormalTPM + vec3(tn.x, 0.0, tn.y) * 5.0);
-		pbr = vec3(0.0, 0.0, 0.0);  // non-metallic, roughness = 0+bias = 0.3
-		specular = 0.5;  // F0 = 0.08 * 0.5 = 0.04 (standard dielectric)
+		// Y = slope direction (consistent across all faces)
+		// eaveDir = face-specific horizontal axis perpendicular to slope
+		vec2 Nxz = normalize(inNormalTPM.xz + vec2(0.0001));
+		vec2 eaveDir = vec2(-Nxz.y, Nxz.x);
+		vec2 roofUV = vec2(inPosition.y * 2.0,
+		                   dot(inPosition.xz, eaveDir)) * 1.0;
+		albedo = texture(albedoTex1, roofUV).xyz;
+		normal = textureNormal(normalTex1, roofUV);
+		pbr = vec3(0.0, 0.0, 0.0);
+		specular = 0.5;
 	}
 
 	if(isWindowGlass(inPosition))
