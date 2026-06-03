@@ -260,11 +260,14 @@ vec3 textureFloor(vec2 uv)
 }
 
 vec3 BRICK_COLOR = vec3(192.0 / 255.0, 106.0 / 255.0, 59.0 / 255.0);
-vec3 BRICK_COLOR_VARIATION = vec3(30.0 / 255.0, 20.0 / 255.0, 20.0 / 255.0);
+//vec3 BRICK_COLOR_VARIATION = vec3( 30.0 /255.0, 20.0/255.0, 20.0/255.0);
 
-vec3 MORTAR_COLOR = vec3(232.0 / 255.0, 216.0 / 255.0, 195.0 / 255.0);
+vec3 BRICK_COLOR_VARIATION = vec3( 0.5, 0.5, 0.5);
 
-vec2 BRICK_SIZE = vec2(0.015, 0.0075);
+//vec3 MORTAR_COLOR = vec3(232.0 / 255.0, 216.0 / 255.0, 195.0 / 255.0);
+vec3 MORTAR_COLOR = vec3(2.0, 2.0, 2.0);
+
+vec2 BRICK_SIZE = vec2(0.01, 0.005);
 vec2 BRICK_PCT = vec2(0.95, 0.9);
 
 void main()
@@ -279,14 +282,18 @@ void main()
      	position.x += 0.5;
     }
 
-	float r = max(random(floor(position)).x + 1.0, 1.0);
+	float r = max(random(floor(position.xy)).x + 1.0, 1.0) * 1.5;
+    vec2 col1 = vec2(r);
+
+	//vec2 col1 = random(floor(position.xy) * 0.1);
 
     position = fract(position);
 
     vec2 useBrick = step(position, BRICK_PCT);
 
-	float brickVariation = fbm(position * 4.0) * 0.12 + 0.88;
-    vec3 color = mix(MORTAR_COLOR, BRICK_COLOR * (0.85 + r * 0.1) * brickVariation, useBrick.x * useBrick.y) + BRICK_COLOR_VARIATION;
+    //vec3 texSample 	= texture( iChannel0, uv ).rgb;
+
+    vec3 color = mix(MORTAR_COLOR, BRICK_COLOR * col1.xyy, useBrick.x * useBrick.y) * BRICK_COLOR_VARIATION * fbm(position * 100.0);// * texSample;
 
 	// lightning++
 	// draw a line, left side is fixed

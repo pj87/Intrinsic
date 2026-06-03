@@ -744,7 +744,8 @@ void DynamicMeshGeneration::init()
       const Name& name = *(mesh->meshName);
       if (name != _N(pbr_test_0125) && name != _N(pbr_test_025) &&
           name != _N(house) && name != _N(skyscrapers) &&
-          name != _N(village_houses) && name != _N(terrain_lava))
+          name != _N(village_houses) && name != _N(ProceduralHouse) &&
+          name != _N(terrain_lava))
       {
         ImageManager::_descDimensions(_normalsImageRef) = glm::uvec3(
             sqrt(mesh->sizes[0]), sqrt(mesh->sizes[1]), sqrt(mesh->sizes[2]));

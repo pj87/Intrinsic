@@ -9,7 +9,6 @@
             "PerPixelPicking"
         ],
         "albedoTextureName": "ProceduralHouse_GEN",
-        "emissiveTextureName": "white",
         "uvOffsetScale": [
             0.0,
             0.0,
@@ -20,19 +19,19 @@
             0.0,
             0.0
         ],
-        "translucencyThickness": 1.0,
-        "emissiveIntensity": 0.0,
+        "translucencyThickness": 0.0,
+        "emissiveIntensity": 3.0,
         "normalTextureName": "ProceduralHouse_NRM_GEN",
         "pbrTextureName": "ProceduralHouse_PBR_GEN",
         "metalMaskBias": 0.0,
-        "roughnessBias": 0.3,
+        "roughnessBias": 0.0,
         "specularBias": 0.0,
         "albedo1TextureName": "roof_GEN",
         "normal1TextureName": "roof_NRM_GEN",
         "pbr1TextureName": "roof_PBR_GEN",
-        "albedo2TextureName": "white",
-        "normal2TextureName": "ProceduralHouse_NRM_GEN",
-        "pbr2TextureName": "ProceduralHouse_PBR_GEN",
-        "blendMaskTextureName": "white"
+        "albedo2TextureName": "wood_GEN",
+        "normal2TextureName": "wood_NRM_GEN",
+        "pbr2TextureName": "wood_PBR_GEN",
+        "blendMaskTextureName": "terrain_BLEND_GEN"
     }
 }

@@ -80,28 +80,28 @@ vec3 tex3DBricks(vec3 pos, vec3 nor, sampler2D s) {
 	
 	vec2 posX = pos.zy + vec2(3.5, 0.0);
 	vec2 posZ = pos.xy + vec2(3.5, 0.0);
-	vec2 posY = vec2(pos.x + 3.5, pos.z + 3.5);
-
+	vec2 posY = vec2(posX.y, posZ.x);
+	
 	posX *= 0.075;
 	posY *= 0.075;
 	posZ *= 0.075;
-
+	
     return texture( s, posX.xy).xyz*abs(nor.x)+
            texture( s, posY.xy).xyz*abs(nor.y)+
            texture( s, posZ.xy).xyz*abs(nor.z);
-
+	
 }
 
 vec3 tex3DBricksNormal(vec3 pos, vec3 nor, sampler2D s) {
 
 	vec2 posX = pos.zy + vec2(3.5, 0.0);
 	vec2 posZ = pos.xy + vec2(3.5, 0.0);
-	vec2 posY = vec2(pos.x + 3.5, pos.z + 3.5);
-
+	vec2 posY = vec2(posX.y, posZ.x);
+	
 	posX *= 0.075;
 	posY *= 0.075;
 	posZ *= 0.075;
-
+	
     return textureNormal( s, posX.xy).xyz*abs(nor.x)+
            textureNormal( s, posY.xy).xyz*abs(nor.y)+
            textureNormal( s, posZ.xy).xyz*abs(nor.z);
@@ -206,22 +206,6 @@ vec3 tex3DFloorNormal(vec3 pos, vec3 nor, sampler2D s) {
     return textureNormal( s, posX.xy).xyz*abs(nor.x)+
            textureNormal( s, posY.xy).xyz*abs(nor.y)+
            textureNormal( s, posZ.xy).xyz*abs(nor.z);
-}
-
-vec3 tex3DRoof(vec3 pos, vec3 nor, sampler2D s) {
-    vec3 blend = pow(abs(nor), vec3(8.0));
-    blend /= (blend.x + blend.y + blend.z);
-    return texture(s, pos.yz).xyz * blend.x +
-           texture(s, pos.xz).xyz * blend.y +
-           texture(s, pos.yx).xyz * blend.z;
-}
-
-vec3 tex3DRoofNormal(vec3 pos, vec3 nor, sampler2D s) {
-    vec3 blend = pow(abs(nor), vec3(8.0));
-    blend /= (blend.x + blend.y + blend.z);
-    return textureNormal(s, pos.yz).xyz * blend.x +
-           textureNormal(s, pos.xz).xyz * blend.y +
-           textureNormal(s, pos.yx).xyz * blend.z;
 }
 
 vec3 tex3DBlendMask(vec3 pos, vec3 nor, sampler2D s) {
@@ -399,7 +383,7 @@ void main()
 		//albedo = vec3(1.0, 1.0, 0.0);
 		//normal = vec3(0.0);
 		//pbr = vec3(0.0);
-		
+
 		//albedo = albedo2.rgb;
 		//normal = normal2;
 		//pbr = pbr2;
@@ -415,26 +399,22 @@ void main()
 	}
 	else  // roof
 	{
-		// Y = slope direction (consistent across all faces)
-		// eaveDir = face-specific horizontal axis perpendicular to slope
-		vec2 Nxz = normalize(inNormalTPM.xz + vec2(0.0001));
-		vec2 eaveDir = vec2(-Nxz.y, Nxz.x);
-		vec2 roofUV = vec2(inPosition.y * 2.0,
-		                   dot(inPosition.xz, eaveDir)) * 1.0;
-		albedo = texture(albedoTex1, roofUV).xyz;
-		normal = textureNormal(normalTex1, roofUV);
-		pbr = vec3(0.0, 0.0, 0.0);
-		specular = 0.5;
+		albedo = albedo4;
+		normal = normal4;
+		pbr = vec3(0.0, 0.75, 0.0);
+		specular = 0.05;
 	}
 
 	if(isWindowGlass(inPosition))
 	{
+
 		albedo = albedo1.rgb;
 		normal = normal1.rgb;
 		pbr = pbr1.rgb;
 		emissive = 1.0;
+
 	}
-	
+
 	gbuffer.albedo = vec4(albedo, 1.0);
 	gbuffer.normal = normal;
 	const vec2 pbr = pbr.rg;

@@ -402,6 +402,8 @@ void MeshManager::updatePerInstanceData(Dod::Ref p_CameraRef,
   _perInstanceDataUpdateTaskSet.m_SetSize =
       (uint32_t)R::RenderProcess::Default::_visibleMeshComponents[frustumId]
           .size();
+  _perInstanceDataUpdateTaskSet.m_MinRange =
+      _perInstanceDataUpdateTaskSet.m_SetSize;
   _perInstanceDataUpdateTaskSet._frustumIdx = frustumId;
   _perInstanceDataUpdateTaskSet._camRef = p_CameraRef;
 
@@ -419,6 +421,9 @@ void MeshManager::updateUniformData(Dod::RefArray& p_DrawCalls)
 
   uniformUpdateTaskSet._drawCalls = &p_DrawCalls;
   uniformUpdateTaskSet.m_SetSize = (uint32_t)p_DrawCalls.size();
+  // Prevent splitting: DrawCallManager::allocateUniformMemory is not
+  // thread-safe, so concurrent ExecuteRange calls would corrupt heap state.
+  uniformUpdateTaskSet.m_MinRange = uniformUpdateTaskSet.m_SetSize;
 
   Application::_scheduler.AddTaskSetToPipe(&uniformUpdateTaskSet);
   Application::_scheduler.WaitforTaskSet(&uniformUpdateTaskSet);
@@ -458,6 +463,10 @@ void MeshManager::collectDrawCallsAndMeshComponents()
 
   meshCollectionTaskSet.m_SetSize =
       Components::MeshManager::getActiveResourceCount();
+  // m_MinRange == m_SetSize prevents enki from splitting this task across
+  // multiple threads. Without this, concurrent ExecuteRange calls all push_back
+  // to the same _visibleMeshComponents[frustIdx] vector — a data race.
+  meshCollectionTaskSet.m_MinRange = meshCollectionTaskSet.m_SetSize;
   Application::_scheduler.AddTaskSetToPipe(&meshCollectionTaskSet);
 
   uint32_t currentJobIdx = 0u;
@@ -477,6 +486,10 @@ void MeshManager::collectDrawCallsAndMeshComponents()
           (uint32_t)Renderer::Resources::DrawCallManager::
               _drawCallsPerMaterialPass[matPassIdx]
                   .size();
+      // Prevent splitting: all ExecuteRange calls for one material pass share
+      // the same output vector (_visibleDrawCallsPerMaterialPass[frustIdx][pass])
+      // and push_back is not thread-safe.
+      drawCallTaskSet.m_MinRange = drawCallTaskSet.m_SetSize;
 
       Application::_scheduler.AddTaskSetToPipe(&drawCallTaskSet);
     }

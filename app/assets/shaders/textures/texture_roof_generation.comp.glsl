@@ -8,7 +8,7 @@
 #version 450
 
 #define iTime 1.0
-#define iResolution vec2(2048.0, 2048.0)
+#define iResolution vec2(2048.0, 2048)
 //#define iResolution vec2(4096.0, 4096)
 
 layout(binding = 0, RGBA8) uniform image2D _TextureTex;
@@ -94,8 +94,8 @@ vec3 textureRoof(vec2 uv)
     float n1 = noise(uv * 5.0);
 	float n2 = noise(uv * 5.0);
 
-	vec3 col1 = vec3(0.45, 0.52, 0.85) * (n1 * 0.3 + 0.7);
-	vec3 col2 = vec3(0.30, 0.37, 0.70) * (n2 * 0.3 + 0.7);
+	vec3 col1 = vec3(0.45, 0.52, 0.85) * n1;
+	vec3 col2 = vec3(0.25, 0.32, 0.65) * n2;
 
     for (int i = 0; i < 2; ++i)
     {
@@ -103,26 +103,22 @@ vec3 textureRoof(vec2 uv)
         _uv = (mod(_uv, uvmod) / uvmod) * uvmod * 1.0;
         _uv -= vec2(0.5, .0);
 
-		vec3 c = vec3(fan(_uv * 0.8));
+		vec3 c = vec3(fan(_uv * 0.9));
 
 		if (i == 0)
-			c.rgb *= col1;
+			c.rgb *= col1 * 0.25 * n1;
 		if (i == 1)
-			c.rgb *= col2;
+			c.rgb *= col2 * 0.25 * n2;
 
         color += c.rgb;
+
     }
 
 	color = clamp(color, 0.0, 1.0);
 
-	// Subtle per-tile brightness variation
-	float cellVar = noise(floor(uv)) * 0.3 + 0.7;
-	color *= cellVar;
-
-	// Dark mortar in gaps
-	vec3 mortar = vec3(0.05, 0.06, 0.10);
-	float tilePresence = clamp((color.r + color.g + color.b) * 5.0, 0.0, 1.0);
-	return clamp(mix(mortar, color, tilePresence), 0.0, 1.0);
+	vec2 col3 = vec2(noise(floor(uv))) * 10.0;
+	// Producing the scale tile.
+    return color * col3.xyx * 2.0;
 }
 
 void main()

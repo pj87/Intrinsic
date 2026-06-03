@@ -231,6 +231,22 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
         2048, 2048, 1, _N(roof_GEN), _N(roof_PBR_GEN),
         "texture_PBR1_generation.comp", false);
 
+    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
+        2048, 2048, 1, _N(wood_GEN),
+        "texture_wood1_generation.comp", false);
+
+    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
+        2048, 2048, 1, _N(wood_GEN), _N(wood_NRM_GEN),
+        "texture_NRM2_generation.comp", false);
+
+    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
+        2048, 2048, 1, _N(wood_GEN), _N(wood_PBR_GEN),
+        "texture_PBR1_generation.comp", false);
+
+    RenderPass::DynamicTextureGeneration::addDynamicGeneradtedTexture(
+        2048, 2048, 1, _N(terrain_BLEND_GEN),
+        "texture_blend_generation.comp", false);
+
     RenderPass::DynamicTextureGeneration::init();
     Renderer::RenderPass::DynamicTextureGeneration::postInit();
 
