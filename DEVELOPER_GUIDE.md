@@ -3579,48 +3579,89 @@ local m = glm.mat4(1.0)
 
 ## 15. Procedural Systems
 
-### Marching cubes pipeline
+### Compute pipeline overview
 
-`DynamicMeshGeneration` runs a three-stage compute pipeline per procedural mesh:
+`DynamicMeshGeneration` runs a multi-stage compute pipeline per procedural mesh.
+Two algorithms are supported, selected per mesh via the `.procedural_mesh.json`
+config:
+
+**Marching Cubes (MC)** — 3 stages, used by Julia and Mandelbulb (64³ grid, localSize 8):
 
 ```
-Stage 1 — voxel shader      writes SDF density into _VoxelBuffer (flat float[])
-Stage 2 — normal_generation reads _VoxelBuffer, writes per-voxel gradients
-                             into a 3D rgba16f texture (_NormalsTex)
-Stage 3 — geometry_generation (marching cubes)
-                             reads _VoxelBuffer + samples _NormalsTex,
-                             writes packed vertex/normal/UV data into
-                             position/normal/tangent/binormal/uv0/color buffers
+Stage 1 — voxel shader        writes SDF density into _VoxelBuffer (flat float[])
+Stage 2 — normal_generation   reads _VoxelBuffer, writes per-voxel gradients
+                               into a 3D rgba16f texture (_NormalsTex)
+Stage 3 — geometry_generation reads _VoxelBuffer + samples _NormalsTex,
+                               writes packed vertex data into position/normal/
+                               tangent/binormal/uv0/color buffers
 ```
 
-The geometry generation shader reads normals via `textureLod(_NormalsTex, uv, 0)`
-at each vertex's fractional edge-interpolated position, getting hardware trilinear
-interpolation for smooth surface normals. Merging `normal_generation` into the
-geometry shader would require replacing this with a manual trilinear fetch from the
-flat `_VoxelBuffer` — feasible but non-trivial.
+MC meshes with `isDynamic: true` (Julia) write the vertex count via `atomicAdd`
+into `_CountBuffer` and draw with `vkCmdDrawIndirect`. Static MC meshes (Mandelbulb)
+use a pre-counted `vkCmdDraw`.
 
-#### Active shader variants
+**Dual Contouring (DC)** — 4 stages, used by Temple and ProceduralHouse (64³ grid):
 
-Four shader variants are in use (others were removed as dead code):
+```
+Stage 1 — voxel shader        writes SDF into _VoxelBuffer
+Stage 2 — normal_generation   writes per-voxel gradients into _NormalsTex
+Stage 3 — dc_qef_generation   solves a QEF per active cell, stores the optimal
+                               vertex position into _QEFBuffer
+                               (vec4(x,y,z,active) per cell)
+Stage 4 — dc_geometry         emits up to 3 quads (18 vertex slots) per active
+                               cell into the same vertex attribute buffers as MC
+```
 
-| Shader | Used by |
-|--------|---------|
-| `generated/geometry_generation_new.comp.glsl` | temple, houses, ProceduralHouse |
-| `generated/geometry_generation_full_tbn.comp.glsl` | julia, mandelbulb |
-| `generated/normal_generation.comp.glsl` | temple, houses, ProceduralHouse |
-| `generated/normal_generation_smooth.comp.glsl` | julia, mandelbulb |
+DC meshes always use static draw (`vkCmdDraw` with `gridCells × 18` slots). Both
+algorithms produce identical vertex buffer layouts and are rendered by the same
+G-Buffer fragment shaders.
 
-Each procedural mesh JSON (`app/managers/procedural_meshes/*.procedural_mesh.json`)
-specifies which variants it uses via `voxelShader`, `normalShader`, and
-`geometryShader` fields. Adding a new procedural mesh requires only a JSON file —
-no C++ recompile needed.
+The normal generation stage is shared by both algorithms. The geometry shader reads
+normals via `textureLod(_NormalsTex, uv, 0)` for hardware trilinear interpolation.
+
+### Procedural mesh JSON format
+
+Each mesh is defined in `app/managers/procedural_meshes/*.procedural_mesh.json`:
+
+```json
+{
+  "name": "Julia",
+  "properties": {
+    "sizeX": 64, "sizeY": 64, "sizeZ": 64,
+    "voxelShader": "julia.comp",
+    "normalShader": "normal_generation_smooth.comp",
+    "geometryShader": "geometry_generation_full_tbn.comp",
+    "isDynamic": true,
+    "param0": 0.0,
+    "localSize": 8
+  }
+}
+```
+
+For DC meshes, add a fourth `dcQEFShader` field — its presence switches the engine
+to the 4-stage DC pipeline:
+
+```json
+"dcQEFShader": "dc_qef_generation_analytical.comp"
+```
+
+Adding a new procedural mesh requires only a JSON file — no C++ recompile needed.
+
+### Active shader variants
+
+| Shader | Used by | Notes |
+|--------|---------|-------|
+| `generated/geometry_generation_full_tbn.comp.glsl` | Julia, Mandelbulb | MC, atomicAdd vertex count |
+| `generated/dc_geometry_generation.comp.glsl` | Temple, ProceduralHouse | DC quad emission |
+| `generated/dc_qef_generation_analytical.comp.glsl` | Temple, ProceduralHouse | DC QEF solve via trilinear SDF gradient |
+| `generated/normal_generation_smooth.comp.glsl` | Julia, Mandelbulb | |
+| `generated/normal_generation.comp.glsl` | Temple, ProceduralHouse | |
 
 ### Static procedural meshes — GBufferGeneratedFlat
 
-Static procedural meshes (temple, procedural_house) use the `GBufferGeneratedFlat`
-material pass. Unlike `GBufferGenerated` (Julia/Mandelbulb marching cubes), these
-meshes do not move each frame — their geometry is generated once by a compute
-shader and then rendered with a fixed G-Buffer fragment shader.
+Static procedural meshes (Temple, ProceduralHouse) use the `GBufferGeneratedFlat`
+material pass. Their geometry is generated once by the DC compute pipeline and
+rendered with a fixed G-Buffer fragment shader.
 
 #### Material pass
 
@@ -3637,8 +3678,8 @@ use it:
 
 #### Vertex attributes
 
-The geometry generation compute shader (`geometry_generation_new.comp.glsl`)
-produces the following vertex data:
+Both `geometry_generation_full_tbn.comp.glsl` (MC) and `dc_geometry_generation.comp.glsl`
+(DC) write the same vertex buffer layout:
 
 | Attribute | Location | Content | Used in frag? |
 |-----------|----------|---------|--------------|
