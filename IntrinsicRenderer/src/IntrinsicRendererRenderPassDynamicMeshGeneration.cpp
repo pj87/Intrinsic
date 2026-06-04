@@ -406,10 +406,9 @@ _INTR_INLINE void createMeshGenerationComputeCall(
     ComputeCallManager::bindBuffer(ref, _N(_TargetBuffer),
         GpuProgramType::kCompute, mesh->_targetBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_targetBufferRef));
-    if (mesh->isDynamic)
-      ComputeCallManager::bindBuffer(ref, _N(_CountBuffer),
-          GpuProgramType::kCompute, mesh->_vertexCountBufferRef, UboType::kPerInstanceCompute,
-          BufferManager::_descSizeInBytes(mesh->_vertexCountBufferRef));
+    ComputeCallManager::bindBuffer(ref, _N(_CountBuffer),
+        GpuProgramType::kCompute, mesh->_vertexCountBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_vertexCountBufferRef));
   }
 
   computeCallsToCreate.push_back(ref);
