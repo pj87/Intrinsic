@@ -1,0 +1,10 @@
+{
+    "name": "wood_GEN",
+    "properties": {
+        "width": 2048,
+        "height": 2048,
+        "depth": 1,
+        "shader": "texture_wood_grain_generation.comp",
+        "isDynamic": false
+    }
+}

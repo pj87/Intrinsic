@@ -1,0 +1,10 @@
+{
+    "name": "mandelbulb.comp",
+    "properties": {
+        "name": "mandelbulb.comp",
+        "gpuProgramName": "meshes/mandelbulb.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

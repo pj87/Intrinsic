@@ -172,7 +172,9 @@ mapBufferTypeToVkUsageFlagBits(BufferType::Enum p_BufferType)
   case BufferType::kUniform:
     return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
   case BufferType::kStorage:
-    return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    return static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   }
 
   _INTR_ASSERT(false && "Failed to map buffer type");
@@ -242,6 +244,8 @@ _INTR_INLINE VkFormat mapFormatToVkFormat(Format::Enum p_Format)
   case Format::kD16UnormS8UInt:
     return VK_FORMAT_D16_UNORM_S8_UINT;
 
+  case Format::kR8G8B8A8UNorm:
+    return VK_FORMAT_R8G8B8A8_UNORM;
   case Format::kB8G8R8A8UNorm:
     return VK_FORMAT_B8G8R8A8_UNORM;
   case Format::kB8G8R8A8Srgb:
@@ -268,6 +272,9 @@ _INTR_INLINE VkFormat mapFormatToVkFormat(Format::Enum p_Format)
 
   case Format::kR8UNorm:
     return VK_FORMAT_R8_UNORM;
+  case Format::kR8G8Unorm:
+    return VK_FORMAT_R8G8_UNORM;
+  
   default:
     _INTR_ASSERT(false && "Failed to map format");
     return VK_FORMAT_R32G32B32_SFLOAT;
@@ -514,6 +521,13 @@ _INTR_INLINE static void insertImageMemoryBarrier(
     imageMemoryBarrier.pNext = nullptr;
     updateAccessMask(imageMemoryBarrier.srcAccessMask, p_OldImageLayout);
     updateAccessMask(imageMemoryBarrier.dstAccessMask, p_NewImageLayout);
+    // TOP_OF_PIPE and BOTTOM_OF_PIPE do not support any access flags - must be 0
+    if (p_SrcStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT ||
+        p_SrcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+      imageMemoryBarrier.srcAccessMask = 0;
+    if (p_DestStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT ||
+        p_DestStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+      imageMemoryBarrier.dstAccessMask = 0;
     imageMemoryBarrier.oldLayout = p_OldImageLayout;
     imageMemoryBarrier.newLayout = p_NewImageLayout;
     imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -562,8 +576,17 @@ _INTR_INLINE static void insertBufferMemoryBarrier(
     bufferMemoryBarrier.buffer = p_Buffer;
     bufferMemoryBarrier.offset = p_OffsetInBytes;
     bufferMemoryBarrier.size = p_SizeInBytes;
-    bufferMemoryBarrier.srcAccessMask = p_SrcAccessMask;
-    bufferMemoryBarrier.dstAccessMask = p_DstAccessMask;
+    // TOP_OF_PIPE and BOTTOM_OF_PIPE do not support any access flags - must be 0
+    bufferMemoryBarrier.srcAccessMask =
+        (p_SrcStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT ||
+         p_SrcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+            ? 0
+            : p_SrcAccessMask;
+    bufferMemoryBarrier.dstAccessMask =
+        (p_DstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT ||
+         p_DstStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+            ? 0
+            : p_DstAccessMask;
   }
 
   vkCmdPipelineBarrier(p_CommandBuffer, p_SrcStages, p_DstStages, 0u, 0u,

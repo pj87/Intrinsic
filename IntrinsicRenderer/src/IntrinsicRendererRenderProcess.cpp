@@ -45,6 +45,8 @@ enum Enum
   kRenderPassShadow,
   kRenderPassClustering,
   kRenderPassVolumetricLighting,
+  kRenderPassDynamicTextureGeneration,
+  kRenderPassDynamicMeshGeneration,
   kRenderPassBloom
 };
 }
@@ -57,6 +59,10 @@ _renderStepTypeMapping = {
     {"RenderPassClustering", RenderStepType::kRenderPassClustering},
     {"RenderPassVolumetricLighting",
      RenderStepType::kRenderPassVolumetricLighting},
+    {"RenderPassDynamicTextureGeneration",
+     RenderStepType::kRenderPassDynamicTextureGeneration},
+    {"RenderPassDynamicMeshGeneration",
+     RenderStepType::kRenderPassDynamicMeshGeneration},
     {"RenderPassBloom", RenderStepType::kRenderPassBloom}};
 
 struct RenderPassInterface
@@ -80,6 +86,12 @@ _renderStepFunctionMapping = {
     {RenderStepType::kRenderPassVolumetricLighting,
      {RenderPass::VolumetricLighting::render,
       RenderPass::VolumetricLighting::onReinitRendering}},
+    {RenderStepType::kRenderPassDynamicTextureGeneration,
+     {RenderPass::DynamicTextureGeneration::render,
+      RenderPass::DynamicTextureGeneration::onReinitRendering}},
+    {RenderStepType::kRenderPassDynamicMeshGeneration,
+     {RenderPass::DynamicMeshGeneration::render,
+      RenderPass::DynamicMeshGeneration::onReinitRendering}},
     {RenderStepType::kRenderPassBloom,
      {RenderPass::Bloom::render, RenderPass::Bloom::onReinitRendering}}};
 
@@ -286,6 +298,23 @@ void Default::loadRendererConfig()
   }
   ImageManager::createResources(_images);
 
+  // All freshly-created resolution-dependent images start in UNDEFINED.
+  // Transition them to SHADER_READ_ONLY_OPTIMAL so any draw call that happens
+  // before the first explicit barrier (e.g. GBuffer draws via the global
+  // texture descriptor set) sees a valid layout.
+  {
+    VkCommandBuffer initCmd = RenderSystem::beginTemporaryCommandBuffer();
+    for (auto& imageRef : _images)
+    {
+      ImageManager::insertImageMemoryBarrier(
+          initCmd, imageRef, VK_IMAGE_LAYOUT_UNDEFINED,
+          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    }
+    RenderSystem::flushTemporaryCommandBuffer();
+  }
+
   for (uint32_t i = 0u; i < renderSteps.Size(); ++i)
   {
     const rapidjson::Value& renderStepDesc = renderSteps[i];
@@ -421,6 +450,13 @@ void Default::renderFrame(float p_DeltaT)
       // Collect visible draw calls and mesh components
       Components::MeshManager::collectDrawCallsAndMeshComponents();
       UniformManager::resetAllocator();
+    }
+
+    // Run procedural mesh compute passes before any graphics draw calls
+    {
+      RenderPass::DynamicMeshGeneration::render(
+          p_DeltaT,
+          _cameras.empty() ? Components::CameraRef() : _cameras[0]);
     }
 
     // Execute render steps

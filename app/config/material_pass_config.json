@@ -136,6 +136,30 @@
       "boundResources" : "GBuffer"
     },
     {
+      "name" : "GBufferGenerated",
+      "baseVertexGpuProgram" : "gbuffer_generated.vert",
+      "baseFragmentGpuProgram" : "gbuffer_generated.frag",
+      "renderPass" : "GBuffer",
+      "blendStates" : ["Default", "Default", "Default"],
+      "boundResources" : "GBuffer"
+    },
+    {
+      "name" : "GBufferGeneratedFlat",
+      "baseVertexGpuProgram" : "gbuffer_generated.vert",
+      "baseFragmentGpuProgram" : "gbuffer_generated_flat.frag",
+      "renderPass" : "GBuffer",
+      "blendStates" : ["Default", "Default", "Default"],
+      "boundResources" : "GBuffer"
+    },
+    {
+      "name" : "GBufferVillageHouses",
+      "baseVertexGpuProgram" : "gbuffer_generated.vert",
+      "baseFragmentGpuProgram" : "gbuffer_village_houses.frag",
+      "renderPass" : "GBuffer",
+      "blendStates" : ["Default", "Default", "Default"],
+      "boundResources" : "GBufferTerrain"
+    },
+    {
       "name" : "GBufferWireframe",
       "baseVertexGpuProgram" : "position_only.vert",
       "baseFragmentGpuProgram" : "gbuffer_solid.frag",

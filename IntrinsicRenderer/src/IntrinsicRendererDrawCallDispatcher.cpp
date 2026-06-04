@@ -80,11 +80,33 @@ struct DrawCallParallelTaskSet : enki::ITaskSet
                 .data());
       }
 
+      Components::MeshRef meshCompRef =
+          DrawCallManager::_descMeshComponent(drawCallRef);
+
+      if (!meshCompRef.isValid())
+        continue;
+
+      const Name& name = Components::MeshManager::getMeshName(meshCompRef);
+
       // Draw
       {
         Resources::BufferRef indexBufferRef =
             Resources::DrawCallManager::_descIndexBuffer(drawCallRef);
-        if (indexBufferRef.isValid())
+
+        if (Resources::DrawCallManager::_descIsProceduralMesh(drawCallRef))
+        {
+          VkBuffer indirectBuf = Resources::DrawCallManager::_descProceduralIndirectBuffer(drawCallRef);
+          if (indirectBuf != VK_NULL_HANDLE)
+            vkCmdDrawIndirect(secondCmdBuffer, indirectBuf, 0u, 1u,
+                              sizeof(VkDrawIndirectCommand));
+          else
+            vkCmdDraw(
+                secondCmdBuffer,
+                Resources::DrawCallManager::_descVertexCount(drawCallRef),
+                Resources::DrawCallManager::_descInstanceCount(drawCallRef),
+                0u, 0u);
+        }
+        else if (indexBufferRef.isValid())
         {
           const VkIndexType indexType =
               Resources::BufferManager::_descBufferType(indexBufferRef) ==
@@ -96,11 +118,26 @@ struct DrawCallParallelTaskSet : enki::ITaskSet
               Resources::BufferManager::_vkBuffer(indexBufferRef),
               Resources::DrawCallManager::_indexBufferOffset(drawCallRef),
               indexType);
-          vkCmdDrawIndexed(
-              secondCmdBuffer,
-              Resources::DrawCallManager::_descIndexCount(drawCallRef),
-              Resources::DrawCallManager::_descInstanceCount(drawCallRef), 0u,
-              0u, 0u);
+
+          if (_IS_INSTANCED_MESH(name))
+          {
+            std::unique_ptr<Intrinsic::Renderer::InstancedMesh>& instancedMesh =
+                _INSTANCED_MESH_SIZE(name);
+            vkCmdDrawIndexed(
+                secondCmdBuffer,
+                Resources::DrawCallManager::_descIndexCount(drawCallRef) *
+                    instancedMesh->sizeX * instancedMesh->sizeZ,
+                Resources::DrawCallManager::_descInstanceCount(drawCallRef), 0u,
+                0u, 0u);
+          }
+          else
+          {
+            vkCmdDrawIndexed(
+                secondCmdBuffer,
+                Resources::DrawCallManager::_descIndexCount(drawCallRef),
+                Resources::DrawCallManager::_descInstanceCount(drawCallRef), 0u,
+                0u, 0u);
+          }
         }
         else
         {

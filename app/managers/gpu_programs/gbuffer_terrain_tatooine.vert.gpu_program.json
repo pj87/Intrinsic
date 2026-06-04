@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_terrain_tatooine.vert",
+    "properties": {
+        "name": "gbuffer_terrain_tatooine.vert",
+        "gpuProgramName": "gbuffer_terrain_tatooine.vert.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 0
+    }
+}

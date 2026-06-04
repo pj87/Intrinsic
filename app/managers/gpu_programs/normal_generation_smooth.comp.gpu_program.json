@@ -1,0 +1,10 @@
+{
+    "name": "normal_generation_smooth.comp",
+    "properties": {
+        "name": "normal_generation_smooth.comp",
+        "gpuProgramName": "generated/normal_generation_smooth.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

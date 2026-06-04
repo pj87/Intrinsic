@@ -1,0 +1,10 @@
+{
+    "name": "julia.comp",
+    "properties": {
+        "name": "julia.comp",
+        "gpuProgramName": "meshes/julia.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

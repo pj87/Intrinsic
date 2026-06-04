@@ -1,0 +1,10 @@
+{
+    "name": "geometry_generation_dynamic.comp",
+    "properties": {
+        "name": "geometry_generation_dynamic.comp",
+        "gpuProgramName": "generated/geometry_generation_dynamic.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

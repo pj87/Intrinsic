@@ -1,0 +1,10 @@
+{
+    "name": "terrain_lava_generated.comp",
+    "properties": {
+        "name": "terrain_lava_generated.comp",
+        "gpuProgramName": "meshes/terrain_lava_generated.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

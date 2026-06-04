@@ -1,0 +1,10 @@
+{
+    "name": "kleiniangroups.comp",
+    "properties": {
+        "name": "kleiniangroups.comp",
+        "gpuProgramName": "meshes/kleiniangroups.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

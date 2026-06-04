@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_lava.vert",
+    "properties": {
+        "name": "gbuffer_lava.vert",
+        "gpuProgramName": "gbuffer_lava.vert.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 0
+    }
+}

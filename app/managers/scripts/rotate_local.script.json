@@ -1,0 +1,7 @@
+{
+    "name": "rotate_local",
+    "properties": {
+        "name": "rotate_local",
+        "scriptFileName": "rotate_local.lua"
+    }
+}

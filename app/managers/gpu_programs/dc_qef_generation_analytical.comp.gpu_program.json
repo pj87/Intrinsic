@@ -1,0 +1,10 @@
+{
+    "name": "dc_qef_generation_analytical.comp",
+    "properties": {
+        "name": "dc_qef_generation_analytical.comp",
+        "gpuProgramName": "generated/dc_qef_generation_analytical.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

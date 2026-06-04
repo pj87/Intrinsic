@@ -1,0 +1,16 @@
+{
+    "name": "ProceduralHouse",
+    "properties": {
+        "sizeX": 64,
+        "sizeY": 64,
+        "sizeZ": 64,
+        "voxelShader": "houses.comp",
+        "normalShader": "normal_generation.comp",
+        "geometryShader": "dc_geometry_generation.comp",
+        "dcQEFShader": "dc_qef_generation_analytical.comp",
+        "isDynamic": false,
+        "param0": 1.01,
+        "param1": -5.0,
+        "localSize": 8
+    }
+}

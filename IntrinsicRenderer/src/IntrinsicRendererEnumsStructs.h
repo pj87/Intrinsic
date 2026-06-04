@@ -217,6 +217,9 @@ enum Enum
   kB10G11R11UFloat,
   kR8UNorm,
 
+  // For procedural texture generation
+  kR8G8B8A8UNorm,
+  kR8G8Unorm,
   kCount
 };
 }

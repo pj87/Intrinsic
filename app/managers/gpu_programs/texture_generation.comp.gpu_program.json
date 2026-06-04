@@ -1,0 +1,10 @@
+{
+    "name": "texture_generation.comp",
+    "properties": {
+        "name": "texture_generation.comp",
+        "gpuProgramName": "textures/texture_generation.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "name": "texture_NRM2_generation.comp",
+    "properties": {
+        "name": "texture_NRM2_generation.comp",
+        "gpuProgramName": "textures/texture_NRM2_generation.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

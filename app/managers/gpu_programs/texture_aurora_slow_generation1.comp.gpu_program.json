@@ -1,0 +1,10 @@
+{
+    "name": "texture_aurora_slow_generation1.comp",
+    "properties": {
+        "name": "texture_aurora_slow_generation1.comp",
+        "gpuProgramName": "textures/texture_aurora_slow_generation1.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

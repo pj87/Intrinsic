@@ -1,0 +1,10 @@
+{
+    "name": "cave1.comp",
+    "properties": {
+        "name": "cave1.comp",
+        "gpuProgramName": "meshes/cave1.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

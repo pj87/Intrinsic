@@ -1,0 +1,10 @@
+{
+    "name": "houses.comp",
+    "properties": {
+        "name": "houses.comp",
+        "gpuProgramName": "meshes/houses.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

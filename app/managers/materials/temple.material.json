@@ -1,0 +1,31 @@
+{
+    "name": "temple",
+    "properties": {
+        "name": "temple",
+        "materialPassMask": [
+            "GBufferGeneratedFlat",
+            "GBufferWireframe",
+            "Shadow",
+            "PerPixelPicking"
+        ],
+        "albedoTextureName": "Temple_GEN",
+        "emissiveTextureName": "white",
+        "uvOffsetScale": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+        ],
+        "uvAnimation": [
+            0.0,
+            0.0
+        ],
+        "translucencyThickness": 1.0,
+        "emissiveIntensity": 3.0,
+        "normalTextureName": "Temple_NRM_GEN",
+        "pbrTextureName": "Temple_PBR_GEN",
+        "metalMaskBias": 0.0,
+        "roughnessBias": 0.5,
+        "specularBias": -0.2
+    }
+}

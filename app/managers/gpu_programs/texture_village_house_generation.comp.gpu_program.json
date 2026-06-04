@@ -1,0 +1,10 @@
+{
+    "name": "texture_village_house_generation.comp",
+    "properties": {
+        "name": "texture_village_house_generation.comp",
+        "gpuProgramName": "textures/texture_village_house_generation.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "name": "temple_ruins.comp",
+    "properties": {
+        "name": "temple_ruins.comp",
+        "gpuProgramName": "meshes/temple_ruins.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

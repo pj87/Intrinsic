@@ -1,0 +1,10 @@
+{
+    "name": "texture_sand1_generation.comp",
+    "properties": {
+        "name": "texture_sand1_generation.comp",
+        "gpuProgramName": "textures/texture_sand1_generation.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

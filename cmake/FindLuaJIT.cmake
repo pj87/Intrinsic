@@ -37,14 +37,25 @@ FIND_PATH(LuaJIT_INCLUDE_DIR lua.h
   ${CMAKE_SOURCE_DIR}/dependencies/lua
 )
 
-FIND_LIBRARY(LuaJIT_LIBRARY 
-  NAMES luajit-51 luajit-5.1 luajit51 luajit lua-51 lua-5.1 lua51 lua
-  HINTS
-  $ENV{LuaJIT_DIR}
-  PATH_SUFFIXES lib64 lib
-  PATHS
-  ${CMAKE_SOURCE_DIR}/dependencies/lua
-)
+IF(MSVC)
+  FIND_LIBRARY(LuaJIT_LIBRARY
+    NAMES lua51 luajit-51 luajit-5.1 luajit51 lua-51 lua-5.1 lua
+    HINTS
+    $ENV{LuaJIT_DIR}
+    PATH_SUFFIXES lib64 lib
+    PATHS
+    ${CMAKE_SOURCE_DIR}/dependencies/lua
+  )
+ELSE()
+  FIND_LIBRARY(LuaJIT_LIBRARY
+    NAMES luajit-51 luajit-5.1 luajit51 luajit lua-51 lua-5.1 lua51 lua
+    HINTS
+    $ENV{LuaJIT_DIR}
+    PATH_SUFFIXES lib64 lib
+    PATHS
+    ${CMAKE_SOURCE_DIR}/dependencies/lua
+  )
+ENDIF()
 
 IF(LuaJIT_LIBRARY)
   # include the math library for Unix

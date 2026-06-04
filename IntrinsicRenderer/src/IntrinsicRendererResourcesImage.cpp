@@ -372,6 +372,12 @@ void createTexture(ImageRef p_Ref)
                                   nullptr, &vkImage);
   _INTR_VK_CHECK_RESULT(result);
 
+    _INTR_LOG_INFO("DBG createTexture '%s' -> VkImage 0x%llx",
+                 ImageManager::_name(p_Ref).getString().c_str(),
+                 (unsigned long long)(uint64_t)vkImage);
+  if (ImageManager::_name(p_Ref) == _N(Scene))
+    _INTR_LOG_INFO("Dupa");
+
   VkMemoryRequirements memReqs;
   vkGetImageMemoryRequirements(RenderSystem::_vkDevice, vkImage, &memReqs);
 
@@ -448,10 +454,16 @@ void createTexture(ImageRef p_Ref)
 
   if (isSrgbFormat)
   {
+    // SRGB format doesn't support storage — restrict the gamma view's usage
+    VkImageViewUsageCreateInfo noStorageUsage = {};
+    noStorageUsage.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+    noStorageUsage.usage = imageCreateInfo.usage & ~VK_IMAGE_USAGE_STORAGE_BIT;
+    imageViewCreateInfo.pNext = &noStorageUsage;
     imageViewCreateInfo.format = VK_FORMAT_B8G8R8A8_SRGB;
     result =
         vkCreateImageView(RenderSystem::_vkDevice, &imageViewCreateInfo,
                           nullptr, &ImageManager::_vkImageViewGamma(p_Ref));
+    imageViewCreateInfo.pNext = nullptr;
     imageViewCreateInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
     result =
         vkCreateImageView(RenderSystem::_vkDevice, &imageViewCreateInfo,
@@ -568,6 +580,7 @@ void createTextureFromFileCubemap(ImageRef p_Ref, gli::texture& p_Texture)
     imageCreateInfo.extent = {width, height, 1u};
     imageCreateInfo.usage =
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
   }
 
   VkImage& vkImage = ImageManager::_vkImage(p_Ref);
@@ -594,8 +607,9 @@ void createTextureFromFileCubemap(ImageRef p_Ref, gli::texture& p_Texture)
   subresourceRange.layerCount = faces;
 
   Helper::insertImageMemoryBarrier(copyCmd, vkImage, VK_IMAGE_LAYOUT_UNDEFINED,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   subresourceRange);
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceRange,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+  ;
 
   vkCmdCopyBufferToImage(copyCmd, stagingBuffer, vkImage,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -604,7 +618,8 @@ void createTextureFromFileCubemap(ImageRef p_Ref, gli::texture& p_Texture)
 
   Helper::insertImageMemoryBarrier(
       copyCmd, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresourceRange);
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresourceRange,
+      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
   RenderSystem::flushTemporaryCommandBuffer();
 
@@ -767,8 +782,8 @@ void createTextureFromFile2D(ImageRef p_Ref, gli::texture& p_Texture)
   subresourceRange.layerCount = 1;
 
   Helper::insertImageMemoryBarrier(copyCmd, vkImage, VK_IMAGE_LAYOUT_UNDEFINED,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   subresourceRange);
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceRange,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
   vkCmdCopyBufferToImage(copyCmd, stagingBuffer, vkImage,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -777,7 +792,8 @@ void createTextureFromFile2D(ImageRef p_Ref, gli::texture& p_Texture)
 
   Helper::insertImageMemoryBarrier(
       copyCmd, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresourceRange);
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresourceRange,
+      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
   RenderSystem::flushTemporaryCommandBuffer();
 

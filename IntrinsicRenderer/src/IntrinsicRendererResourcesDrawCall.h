@@ -39,6 +39,8 @@ struct DrawCallData : Dod::Resources::ResourceDataBase
     descMaterial.resize(_INTR_MAX_DRAW_CALL_COUNT);
     descMaterialPass.resize(_INTR_MAX_DRAW_CALL_COUNT);
     descMeshComponent.resize(_INTR_MAX_DRAW_CALL_COUNT);
+    descIsProceduralMesh.resize(_INTR_MAX_DRAW_CALL_COUNT);
+    descProceduralIndirectBuffer.resize(_INTR_MAX_DRAW_CALL_COUNT);
 
     dynamicOffsets.resize(_INTR_MAX_DRAW_CALL_COUNT);
     vertexBuffers.resize(_INTR_MAX_DRAW_CALL_COUNT);
@@ -60,6 +62,8 @@ struct DrawCallData : Dod::Resources::ResourceDataBase
   _INTR_ARRAY(Dod::Ref) descMaterial;
   _INTR_ARRAY(uint8_t) descMaterialPass;
   _INTR_ARRAY(Dod::Ref) descMeshComponent;
+  _INTR_ARRAY(uint8_t) descIsProceduralMesh;
+  _INTR_ARRAY(VkBuffer) descProceduralIndirectBuffer;
 
   // Resources
   _INTR_ARRAY(_INTR_ARRAY(uint32_t)) dynamicOffsets;
@@ -259,6 +263,8 @@ struct DrawCallManager
     _descMaterial(p_Ref) = Dod::Ref();
     _descMaterialPass(p_Ref) = 0u;
     _descMeshComponent(p_Ref) = Dod::Ref();
+    _descIsProceduralMesh(p_Ref) = false;
+    _descProceduralIndirectBuffer(p_Ref) = VK_NULL_HANDLE;
   }
 
   _INTR_INLINE static void destroyDrawCall(DrawCallRef p_Ref)
@@ -474,6 +480,14 @@ struct DrawCallManager
   _INTR_INLINE static uint8_t& _descMaterialPass(DrawCallRef p_Ref)
   {
     return _data.descMaterialPass[p_Ref._id];
+  }
+  _INTR_INLINE static uint8_t& _descIsProceduralMesh(DrawCallRef p_Ref)
+  {
+    return _data.descIsProceduralMesh[p_Ref._id];
+  }
+  _INTR_INLINE static VkBuffer& _descProceduralIndirectBuffer(DrawCallRef p_Ref)
+  {
+    return _data.descProceduralIndirectBuffer[p_Ref._id];
   }
 
   // Resources

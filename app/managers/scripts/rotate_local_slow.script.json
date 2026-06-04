@@ -1,0 +1,7 @@
+{
+    "name": "rotate_local_slow",
+    "properties": {
+        "name": "rotate_local_slow",
+        "scriptFileName": "rotate_local_slow.lua"
+    }
+}

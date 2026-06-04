@@ -1,0 +1,15 @@
+{
+    "name": "Julia",
+    "properties": {
+        "sizeX": 64,
+        "sizeY": 64,
+        "sizeZ": 64,
+        "voxelShader": "julia.comp",
+        "normalShader": "normal_generation_smooth.comp",
+        "geometryShader": "geometry_generation_full_tbn.comp",
+        "isDynamic": true,
+        "param0": 0.0,
+        "param1": 0.0,
+        "localSize": 8
+    }
+}

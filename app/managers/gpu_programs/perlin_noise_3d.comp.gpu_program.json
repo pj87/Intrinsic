@@ -1,0 +1,10 @@
+{
+    "name": "perlin_noise_3d.comp",
+    "properties": {
+        "name": "perlin_noise_3d.comp",
+        "gpuProgramName": "meshes/perlin_noise_3d.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

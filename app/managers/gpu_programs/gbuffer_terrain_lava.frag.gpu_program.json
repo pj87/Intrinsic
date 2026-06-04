@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_terrain_lava.frag",
+    "properties": {
+        "name": "gbuffer_terrain_lava.frag",
+        "gpuProgramName": "gbuffer_terrain_lava.frag.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 1
+    }
+}

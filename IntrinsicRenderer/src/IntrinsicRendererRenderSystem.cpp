@@ -178,6 +178,18 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
 
     RenderPass::Clustering::init();
     RenderPass::VolumetricLighting::init();
+    
+    RenderPass::DynamicMeshGeneration::loadFromMultipleFiles(
+        "managers/procedural_meshes/");
+
+    RenderPass::DynamicTextureGeneration::loadFromMultipleFiles(
+        "managers/procedural_textures/");
+
+    RenderPass::DynamicTextureGeneration::init();
+    Renderer::RenderPass::DynamicTextureGeneration::postInit();
+
+    RenderPass::DynamicMeshGeneration::init();
+    RenderPass::DynamicMeshGeneration::postInit();
 
     RenderPass::Bloom::init();
 
@@ -679,6 +691,8 @@ void RenderSystem::initVkDevice()
 
   // Check if debug marker extension is supported
   bool debugMarkerExtPresent = false;
+  bool debugReportExtPresent = false;
+  bool maintenance2ExtPresent = false;
   {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(_vkPhysicalDevice, nullptr,
@@ -697,14 +711,28 @@ void RenderSystem::initVkDevice()
         _INTR_LOG_INFO("Enabling debug markers...");
         debugMarkerExtPresent = true;
       }
+      if (strcmp(ext.extensionName, VK_EXT_DEBUG_REPORT_EXTENSION_NAME) == 0u)
+        debugReportExtPresent = true;
+      if (strcmp(ext.extensionName, VK_KHR_MAINTENANCE2_EXTENSION_NAME) == 0u)
+        maintenance2ExtPresent = true;
     }
+
+    if (debugMarkerExtPresent && debugReportExtPresent)
+      _INTR_LOG_INFO("Enabling debug markers...");
+    else
+      debugMarkerExtPresent = false;
   }
 
   _INTR_ARRAY(const char*) enabledExtensions;
   {
     enabledExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     if (debugMarkerExtPresent)
+    {
+      enabledExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
       enabledExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+    }
+    if (maintenance2ExtPresent)
+      enabledExtensions.push_back(VK_KHR_MAINTENANCE2_EXTENSION_NAME);
   }
 
   _INTR_ARRAY(const char*) enabledLayers;

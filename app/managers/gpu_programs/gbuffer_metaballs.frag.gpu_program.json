@@ -1,0 +1,10 @@
+{
+    "name": "gbuffer_metaballs.frag",
+    "properties": {
+        "name": "gbuffer_metaballs.frag",
+        "gpuProgramName": "gbuffer_metaballs.frag.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 1
+    }
+}
