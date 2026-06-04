@@ -478,45 +478,7 @@ void DynamicMeshGeneration::addDynamicGeneratedMesh(
   dynamicGenerationMeshes.push_back(std::move(dynamicGenerationMesh));
 }
 
-bool DynamicMeshGeneration::isOverridenMesh(const Name& meshName)
-{
-  for (auto& mesh : dynamicGenerationMeshes)
-  {
-    if ((*mesh->meshName) == meshName)
-      return true;
-  }
-  return false;
-}
 
-bool DynamicMeshGeneration::isDynamicMesh(const Name& meshName)
-{
-  for (auto& mesh : dynamicGenerationMeshes)
-  {
-    if ((*mesh->meshName) == meshName)
-      return mesh->isDynamic;
-  }
-  return false;
-}
-
-unsigned DynamicMeshGeneration::getIndicesNumber(const Name& meshName)
-{
-  for (auto& mesh : dynamicGenerationMeshes)
-  {
-    if ((*mesh->meshName) == meshName)
-      return mesh->indicesNumber;
-  }
-  return 0u;
-}
-
-VkBuffer DynamicMeshGeneration::getIndirectBuffer(const Name& meshName)
-{
-  for (auto& mesh : dynamicGenerationMeshes)
-  {
-    if ((*mesh->meshName) == meshName)
-      return BufferManager::_vkBuffer(mesh->_vertexCountBufferRef);
-  }
-  return VK_NULL_HANDLE;
-}
 
 void DynamicMeshGeneration::init()
 {
@@ -1183,6 +1145,9 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
               }
               DrawCallManager::_descIndexBuffer(dcRef) = BufferRef();
               DrawCallManager::_descVertexCount(dcRef) = mesh->indicesNumber;
+              DrawCallManager::_descIsProceduralMesh(dcRef) = true;
+              DrawCallManager::_descProceduralIndirectBuffer(dcRef) =
+                  mesh->isDynamic ? BufferManager::_vkBuffer(mesh->_vertexCountBufferRef) : VK_NULL_HANDLE;
             }
           }
         }

@@ -93,22 +93,18 @@ struct DrawCallParallelTaskSet : enki::ITaskSet
         Resources::BufferRef indexBufferRef =
             Resources::DrawCallManager::_descIndexBuffer(drawCallRef);
 
-        if (_IS_OVERRIDEN_MESH(name))
+        if (Resources::DrawCallManager::_descIsProceduralMesh(drawCallRef))
         {
-          if (_IS_DYNAMIC_MESH(name))
-          {
-            VkBuffer indirectBuf = _GET_INDIRECT_BUFFER(name);
-            if (indirectBuf != VK_NULL_HANDLE)
-              vkCmdDrawIndirect(secondCmdBuffer, indirectBuf, 0u, 1u,
-                                sizeof(VkDrawIndirectCommand));
-          }
+          VkBuffer indirectBuf = Resources::DrawCallManager::_descProceduralIndirectBuffer(drawCallRef);
+          if (indirectBuf != VK_NULL_HANDLE)
+            vkCmdDrawIndirect(secondCmdBuffer, indirectBuf, 0u, 1u,
+                              sizeof(VkDrawIndirectCommand));
           else
-          {
             vkCmdDraw(
-                secondCmdBuffer, _GET_INDICES_NUMBER(name),
+                secondCmdBuffer,
+                Resources::DrawCallManager::_descVertexCount(drawCallRef),
                 Resources::DrawCallManager::_descInstanceCount(drawCallRef),
                 0u, 0u);
-          }
         }
         else if (indexBufferRef.isValid())
         {

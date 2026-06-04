@@ -14,16 +14,6 @@
 
 #pragma once
 
-#define _IS_OVERRIDEN_MESH(name) Intrinsic::Renderer::RenderPass::DynamicMeshGeneration::isOverridenMesh(name)
-#define _IS_DYNAMIC_MESH(name)                                               \
-  Intrinsic::Renderer::RenderPass::DynamicMeshGeneration::isDynamicMesh(     \
-      name)
-#define _GET_INDICES_NUMBER(name)                                               \
-  Intrinsic::Renderer::RenderPass::DynamicMeshGeneration::getIndicesNumber(    \
-      name)
-#define _GET_INDIRECT_BUFFER(name)                                               \
-  Intrinsic::Renderer::RenderPass::DynamicMeshGeneration::getIndirectBuffer(    \
-      name)
 
 namespace Intrinsic
 {
@@ -135,10 +125,6 @@ struct DynamicMeshGeneration
 
   static float getVoxel(DynamicGeneratedMesh& mesh, int x, int y, int z);
 
-  static bool isOverridenMesh(const Name&);
-  static bool isDynamicMesh(const Name&);
-  static unsigned getIndicesNumber(const Name& meshName);
-  static VkBuffer getIndirectBuffer(const Name& meshName);
 
   static void init();
   static void onReinitRendering();
