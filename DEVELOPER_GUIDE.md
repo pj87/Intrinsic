@@ -3774,6 +3774,40 @@ generation shader divides all positions by 10 before writing to the vertex buffe
 coordinates into a reasonable model-space range. The same scale factor controls
 texture tiling frequency — a larger divisor = coarser texture tiling.
 
+#### Specular default
+
+`gbuffer_generated_flat.frag.glsl` sets `gbuffer.specular = 0.5 + uboPerMaterial.pbrBias.g`.
+The baseline of 0.5 corresponds to ~4% reflectance at normal incidence — the
+standard dielectric default in the G-Buffer. A value of 0.0 (the old shader's
+bare `pbrBias.g` which defaults to zero) gives black specular highlights on all
+geometry.
+
+#### Albedo source
+
+Albedo is sampled triplanarly from `albedoTex`. The emissive texture is used
+**only** for `gbuffer.emissive` at a multiplier of 0.1:
+
+```glsl
+gbuffer.albedo  = triplanar(albedoTex, ...) * colorTint;
+gbuffer.emissive = triplanar(emissiveTex, ...).r * 0.1;
+```
+
+A previous version of this shader accidentally used `emissiveTex` as the albedo
+source (via `mix(tex3D(albedoTex), tex3D(pos/10, emissiveTex), 1.0)` — `mix`
+with `t=1.0` discards the first argument), meaning the temple's albedo texture was
+never read. The fix was to sample `albedoTex` and `emissiveTex` in separate
+assignments.
+
+#### Vertex input reduction
+
+The shader takes only three vertex inputs — `inNormal`, `inPosition`,
+`inViewPosition` — down from seven in the old version. `inTangent`, `inBinormal`,
+`inUV0`, and `inNormalTPM` were all declared in the old shader but none were used
+correctly: `inUV0` was passed to a single-axis `cotangent_frame` that produced
+streak artifacts (see [Triplanar texture mapping](#triplanar-texture-mapping)),
+and the rest were unused. The current shader derives everything it needs from
+screen-space derivatives and the three interpolated inputs.
+
 ### Pseudo-instancing
 
 `PseudoInstancing` handles large numbers of the same mesh (e.g. grass, trees)
