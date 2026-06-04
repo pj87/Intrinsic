@@ -14,11 +14,6 @@ struct Vert
 	vec2 uv0;
 };
 
-struct Debug
-{
-	vec4 debug1;
-	vec4 debug2;
-};
 
 layout(binding = 0) coherent buffer _PositionBuffer
 {
@@ -56,23 +51,19 @@ layout(binding = 8) buffer _VoxelBuffer
 {
 	float _Voxels[];
 };
-layout(binding = 9) buffer _DebugBuffer
+layout(binding = 9) uniform sampler3D _NormalsTex;
+layout(binding = 10) buffer _SizesBuffer
 {
-	Debug _DebugTuple[];
-};
-layout(binding = 10) uniform sampler3D _NormalsTex;
-layout(binding = 11) buffer _SizesBuffer
-{	
 	int _Width;
 	int _Height;
 	int _Depth;
 	int _Border;
 };
-layout(binding = 12) buffer _TargetBuffer
+layout(binding = 11) buffer _TargetBuffer
 {
 	float _Target;
 };
-layout(binding = 13) buffer _CountBuffer
+layout(binding = 12) buffer _CountBuffer
 {
 	uint _VertexCount;
 };
@@ -247,8 +238,6 @@ void main()
 
 	for (i = 0; i < 8; i++)
 	{
-		_DebugTuple[idx].debug1 = vec4(cube[0], cube[1], cube[2], cube[3]);
-		_DebugTuple[idx].debug2 = vec4(cube[4], cube[5], cube[6], cube[7]);
 		if (cube[i] <= _Target) flagIndex |= 1 << i;
 	}
 

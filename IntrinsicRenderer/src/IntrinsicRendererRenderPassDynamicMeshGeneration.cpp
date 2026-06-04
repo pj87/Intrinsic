@@ -395,9 +395,6 @@ _INTR_INLINE void createMeshGenerationComputeCall(
     ComputeCallManager::bindBuffer(ref, _N(_VoxelBuffer),
         GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
-    ComputeCallManager::bindBuffer(ref, _N(_DebugBuffer),
-        GpuProgramType::kCompute, mesh->_dcCellVertexBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_dcCellVertexBufferRef));
     ComputeCallManager::bindImage(ref, _N(_NormalsTex),
         GpuProgramType::kCompute, mesh->_normalsImageRef, Samplers::kNearestRepeat);
     ComputeCallManager::bindBuffer(ref, _N(_SizesBuffer),

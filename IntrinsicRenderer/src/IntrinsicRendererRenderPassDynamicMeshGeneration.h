@@ -80,7 +80,6 @@ struct DynamicGeneratedMesh
   BufferRef _uv0BufferRef;
   // DC: one vec4(x,y,z,active) per voxel cell — the QEF-optimal vertex position
   // produced by dc_qef_generation and consumed by dc_geometry_generation.
-  // Reuses the MC debug buffer slot; MC writes to it but nothing reads it back.
   BufferRef _dcCellVertexBufferRef;
   BufferRef _voxelBufferRef;
   BufferRef _cubeEdgeFlagsBufferRef;
