@@ -211,6 +211,10 @@ void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
     RenderPass::DynamicMeshGeneration::init();
     RenderPass::DynamicMeshGeneration::postInit();
 
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    RenderPass::AccelerationStructurePass::init();
+#endif
+
     RenderPass::Bloom::init();
 
     RenderPass::Debug::init();

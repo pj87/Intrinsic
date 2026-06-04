@@ -144,10 +144,23 @@ GpuMemoryManager::allocateOffset(MemoryPoolType::Enum p_MemoryPoolType,
         VkMemoryAllocateInfo memAllocInfo = {};
         {
           memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-          memAllocInfo.pNext = 0u;
+          memAllocInfo.pNext = nullptr;
           memAllocInfo.allocationSize = _INTR_GPU_PAGE_SIZE_IN_BYTES;
           memAllocInfo.memoryTypeIndex = memoryTypeIdx;
         }
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+        // All device-local pages need VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT so
+        // that vertex and index buffers can be queried for BDA (used as BLAS
+        // geometry inputs).
+        VkMemoryAllocateFlagsInfo bdaFlags = {};
+        if (memLocation == MemoryLocation::kDeviceLocal)
+        {
+          bdaFlags.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+          bdaFlags.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+          memAllocInfo.pNext = &bdaFlags;
+        }
+#endif
 
         VkResult result =
             vkAllocateMemory(RenderSystem::_vkDevice, &memAllocInfo, nullptr,

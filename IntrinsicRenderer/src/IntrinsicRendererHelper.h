@@ -165,10 +165,22 @@ mapBufferTypeToVkUsageFlagBits(BufferType::Enum p_BufferType)
   switch (p_BufferType)
   {
   case BufferType::kVertex:
-    return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    return static_cast<VkBufferUsageFlagBits>(
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+#if defined(_INTR_FEATURE_RAY_TRACING)
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+#endif
+    );
   case BufferType::kIndex32:
   case BufferType::kIndex16:
-    return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    return static_cast<VkBufferUsageFlagBits>(
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+#if defined(_INTR_FEATURE_RAY_TRACING)
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+#endif
+    );
   case BufferType::kUniform:
     return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
   case BufferType::kStorage:

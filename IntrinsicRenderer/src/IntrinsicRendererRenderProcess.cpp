@@ -47,7 +47,10 @@ enum Enum
   kRenderPassVolumetricLighting,
   kRenderPassDynamicTextureGeneration,
   kRenderPassDynamicMeshGeneration,
-  kRenderPassBloom
+  kRenderPassBloom,
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  kRenderPassAccelerationStructure,
+#endif
 };
 }
 
@@ -93,7 +96,13 @@ _renderStepFunctionMapping = {
      {RenderPass::DynamicMeshGeneration::render,
       RenderPass::DynamicMeshGeneration::onReinitRendering}},
     {RenderStepType::kRenderPassBloom,
-     {RenderPass::Bloom::render, RenderPass::Bloom::onReinitRendering}}};
+     {RenderPass::Bloom::render, RenderPass::Bloom::onReinitRendering}}
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    ,
+    {RenderStepType::kRenderPassAccelerationStructure,
+     {nullptr, RenderPass::AccelerationStructurePass::onReinitRendering}}
+#endif
+};
 
 struct RenderStep
 {
@@ -458,6 +467,16 @@ void Default::renderFrame(float p_DeltaT)
           p_DeltaT,
           _cameras.empty() ? Components::CameraRef() : _cameras[0]);
     }
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    // Build/update acceleration structures after geometry is finalised.
+    // Must run before any RT render passes in the step list.
+    {
+      RenderPass::AccelerationStructurePass::render(
+          p_DeltaT,
+          _cameras.empty() ? Components::CameraRef() : _cameras[0]);
+    }
+#endif
 
     // Execute render steps
     {
