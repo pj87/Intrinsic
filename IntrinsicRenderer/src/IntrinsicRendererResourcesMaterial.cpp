@@ -186,6 +186,18 @@ void MaterialManager::createResources(const MaterialRefArray& p_Materiales)
     }
   }
 
+  // A mesh component can appear multiple times when its submeshes each match a
+  // different material in p_Materiales.  Deduplicate so that destroyResources
+  // and createResources each process it only once.
+  std::sort(componentsToRecreate.begin(), componentsToRecreate.end(),
+            [](const Dod::Ref& a, const Dod::Ref& b) {
+              return (a._id != b._id) ? a._id < b._id
+                                      : a._generation < b._generation;
+            });
+  componentsToRecreate.erase(
+      std::unique(componentsToRecreate.begin(), componentsToRecreate.end()),
+      componentsToRecreate.end());
+
   CComponents::MeshManager::destroyResources(componentsToRecreate);
   CComponents::MeshManager::createResources(componentsToRecreate);
 }
@@ -487,7 +499,13 @@ void MaterialManager::loadMaterialPassConfig()
   PipelineLayoutManager::createResources(_materialPassPipelineLayouts);
   PipelineManager::createResources(_materialPassPipelines);
 
-  DrawCallManager::_drawCallsPerMaterialPass.resize(_materialPasses.size());
+  // Only grow, never shrink: active draw calls still hold materialPass indices
+  // from the previous cycle and must remain valid until destroyResources cleans
+  // them up.  Shrinking here would make those indices out-of-bounds.
+  if (_materialPasses.size() > DrawCallManager::_drawCallsPerMaterialPass.size())
+  {
+    DrawCallManager::_drawCallsPerMaterialPass.resize(_materialPasses.size());
+  }
 }
 }
 }
