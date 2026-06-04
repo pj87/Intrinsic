@@ -35,6 +35,18 @@ if(INTR_BUILD_INTRINSICED)
 endif()
 
 set(INTR_FINAL_BUILD OFF CACHE BOOL "Final build setting")
+set(INTR_RENDERER_BACKEND_DX12 OFF CACHE BOOL "Use the Direct3D 12 rendering backend (Windows only)")
+set(INTR_FEATURE_RAY_TRACING OFF CACHE BOOL "Enable Vulkan ray tracing (VK_KHR_ray_tracing_pipeline)")
+
+if(INTR_RENDERER_BACKEND_DX12)
+  add_definitions("-D_INTR_RENDERER_BACKEND_DX12")
+else()
+  add_definitions("-D_INTR_RENDERER_BACKEND_VULKAN")
+endif()
+
+if(INTR_FEATURE_RAY_TRACING)
+  add_definitions("-D_INTR_FEATURE_RAY_TRACING")
+endif()
 
 add_definitions("-DMICROPROFILE_GPU_TIMERS_VULKAN")
 
@@ -251,6 +263,9 @@ endif()
 if (INTR_PLATFORM_WINDOWS)
   target_link_libraries(IntrinsicCore wsock32 ws2_32)
   target_link_libraries(IntrinsicCore Dbghelp)
+  if(INTR_RENDERER_BACKEND_DX12)
+    target_link_libraries(IntrinsicCore d3d12 dxgi dxguid d3dcompiler)
+  endif()
 endif()
 
 target_link_libraries(IntrinsicCore ${INTR_EXTERNAL_LIBS})

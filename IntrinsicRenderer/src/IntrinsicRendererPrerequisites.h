@@ -14,6 +14,12 @@
 
 #pragma once
 
+#define _INTR_PSSM_SPLIT_COUNT 4u
+#define _INTR_MAX_SHADOW_MAP_COUNT 4u
+#define _INTR_MAX_FRUSTUMS_PER_FRAME_COUNT 16u
+
+#if defined(_INTR_RENDERER_BACKEND_VULKAN)
+
 #define _INTR_VK_SECONDARY_COMMAND_BUFFER_COUNT 128u
 
 #define _INTR_VK_PER_INSTANCE_DATA_BUFFER_COUNT 2u
@@ -38,16 +44,24 @@
   (_INTR_VK_PER_MATERIAL_BLOCK_SIZE_IN_BYTES *                                 \
    _INTR_VK_PER_MATERIAL_BLOCK_COUNT)
 
-#define _INTR_PSSM_SPLIT_COUNT 4u
-#define _INTR_MAX_SHADOW_MAP_COUNT 4u
-#define _INTR_MAX_FRUSTUMS_PER_FRAME_COUNT 16u
-
-// Vulkan macros
+// Vulkan result checking
 #if !defined(_INTR_FINAL_BUILD)
-#define _INTR_PROFILE_GPU_MARKER_REGION(_name)                                 \
-  GpuMarkerRegion _INTR_CONCAT(marker, __COUNTER__) = GpuMarkerRegion(_name)
 #define _INTR_VK_CHECK_RESULT(x) assert(x == VK_SUCCESS)
 #else
 #define _INTR_VK_CHECK_RESULT(x)
-#define _INTR_PROFILE_GPU_MARKER_REGION(_name)
 #endif // _INTR_FINAL_BUILD
+
+#endif // _INTR_RENDERER_BACKEND_VULKAN
+
+// GPU marker region — backend-specific expansion used by _INTR_PROFILE_GPU in
+// IntrinsicCorePrerequisites.h.  Must be defined for every backend.
+#if !defined(_INTR_FINAL_BUILD)
+#  if defined(_INTR_RENDERER_BACKEND_VULKAN)
+#    define _INTR_PROFILE_GPU_MARKER_REGION(_name)                             \
+       GpuMarkerRegion _INTR_CONCAT(marker, __COUNTER__) = GpuMarkerRegion(_name)
+#  else
+#    define _INTR_PROFILE_GPU_MARKER_REGION(_name)
+#  endif
+#else
+#  define _INTR_PROFILE_GPU_MARKER_REGION(_name)
+#endif
