@@ -3778,9 +3778,7 @@ texture tiling frequency — a larger divisor = coarser texture tiling.
 
 `gbuffer_generated_flat.frag.glsl` sets `gbuffer.specular = 0.5 + uboPerMaterial.pbrBias.g`.
 The baseline of 0.5 corresponds to ~4% reflectance at normal incidence — the
-standard dielectric default in the G-Buffer. A value of 0.0 (the old shader's
-bare `pbrBias.g` which defaults to zero) gives black specular highlights on all
-geometry.
+standard dielectric default in the G-Buffer.
 
 #### Albedo source
 
@@ -3788,25 +3786,91 @@ Albedo is sampled triplanarly from `albedoTex`. The emissive texture is used
 **only** for `gbuffer.emissive` at a multiplier of 0.1:
 
 ```glsl
-gbuffer.albedo  = triplanar(albedoTex, ...) * colorTint;
+gbuffer.albedo   = triplanar(albedoTex, ...) * colorTint;
 gbuffer.emissive = triplanar(emissiveTex, ...).r * 0.1;
 ```
 
-A previous version of this shader accidentally used `emissiveTex` as the albedo
-source (via `mix(tex3D(albedoTex), tex3D(pos/10, emissiveTex), 1.0)` — `mix`
-with `t=1.0` discards the first argument), meaning the temple's albedo texture was
-never read. The fix was to sample `albedoTex` and `emissiveTex` in separate
-assignments.
+#### Vertex inputs
 
-#### Vertex input reduction
+The shader takes three vertex inputs: `inNormal` (view-space SDF gradient),
+`inPosition` (model-space, used as triplanar UV), and `inViewPosition`
+(view-space position, passed to `cotangent_frame` so that `N` and `p` are in
+the same coordinate space).
 
-The shader takes only three vertex inputs — `inNormal`, `inPosition`,
-`inViewPosition` — down from seven in the old version. `inTangent`, `inBinormal`,
-`inUV0`, and `inNormalTPM` were all declared in the old shader but none were used
-correctly: `inUV0` was passed to a single-axis `cotangent_frame` that produced
-streak artifacts (see [Triplanar texture mapping](#triplanar-texture-mapping)),
-and the rest were unused. The current shader derives everything it needs from
-screen-space derivatives and the three interpolated inputs.
+---
+
+### Legacy temple shader (old engine)
+
+`gbuffer_temple.frag.glsl` from the original engine is preserved at
+`C:\Users\pj\Documents\Programowanie\Intrinsic\app\assets\shaders\gbuffer_temple.frag.glsl`.
+It was replaced by `gbuffer_generated_flat.frag.glsl` because it contained
+several correctness bugs.
+
+#### Bug 1 — Albedo was sampled from emissiveTex
+
+```glsl
+// Old shader (line 122):
+gbuffer.albedo = vec4(inColor, 1.0)
+    + vec4(mix(tex3D(inPosition, inNormalTPM, albedoTex),
+               tex3D(inPosition / 10.0, inNormalTPM, emissiveTex), 1.0), 1.0)
+    * uboPerInstance.colorTint;
+```
+
+`mix(a, b, 1.0)` always returns `b`, so `albedoTex` was silently discarded.
+The albedo was being read from `emissiveTex` at 1/10th UV scale, plus `inColor`
+(which the compute shader writes as zero). The temple albedo texture was never
+sampled.
+
+#### Bug 2 — Single TBN caused streak artifacts
+
+```glsl
+// Old shader (line 116):
+const mat3 TBN = cotangent_frame(inNormal, inPosition, inUV0);
+```
+
+A single cotangent frame using the precomputed `inUV0` gives degenerate
+`dFdx`/`dFdy` derivatives for off-axis faces — near-zero derivatives for
+Z-facing geometry when using Y-projected UVs, producing visible streak artifacts.
+The current shader builds three separate TBN matrices, one per projection axis
+(see [Triplanar texture mapping](#triplanar-texture-mapping)).
+
+Additionally, `inPosition` (model-space) was passed as `p` while `inNormal`
+(view-space) was passed as `N` — a coordinate space mismatch inside
+`cotangent_frame`.
+
+#### Bug 3 — No inward-normal correction
+
+```glsl
+// Old shader (line 127):
+gbuffer.normal = normalize(TBN * tex3DNormal(inPosition, inNormalTPM, normalTex));
+```
+
+The SDF gradient stored in `inNormal` / `inNormalTPM` is inward-pointing (the
+voxel buffer stores `−SDF`). The old shader wrote this directly as the surface
+normal without flipping it. The current shader corrects this with `reflect()`
+(see [Inward-pointing normals](#inward-pointing-normals)).
+
+#### Bug 4 — Zero specular
+
+```glsl
+// Old shader (line 130):
+gbuffer.specular = uboPerMaterial.pbrBias.g;  // defaults to 0.0
+```
+
+With no baseline, specular highlights were black for the default material
+configuration. The current shader uses `0.5 + pbrBias.g`.
+
+#### Bug 5 — Dead code with silent no-op
+
+```glsl
+// Old shader (lines 67-68, inside tex3d()):
+vec3 avgNormal = abs(normal);
+avgNormal / (avgNormal.x + avgNormal.y + avgNormal.z);  // result discarded
+```
+
+The normalization divides `avgNormal` but discards the result (missing `=`
+assignment), so `avgNormal` is the raw absolute normal throughout. The functions
+`tex3d` and `tex3d_1` that contain this code are never called from `main()`.
 
 ### Pseudo-instancing
 
