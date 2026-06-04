@@ -193,10 +193,18 @@ VkDescriptorSet PipelineLayoutManager::allocateAndWriteDescriptorSet(
     _INTR_ARRAY(VkWriteDescriptorSet) writes;
     _INTR_ARRAY(VkDescriptorImageInfo) imageInfos;
     _INTR_ARRAY(VkDescriptorBufferInfo) bufferInfos;
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    _INTR_ARRAY(VkAccelerationStructureKHR) asHandles;
+    _INTR_ARRAY(VkWriteDescriptorSetAccelerationStructureKHR) asWriteInfos;
+#endif
 
     writes.resize(p_BindInfos.size());
     imageInfos.resize(p_BindInfos.size());
     bufferInfos.resize(p_BindInfos.size());
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    asHandles.resize(p_BindInfos.size(), VK_NULL_HANDLE);
+    asWriteInfos.resize(p_BindInfos.size(), {});
+#endif
 
     for (uint32_t i = 0u; i < p_BindInfos.size(); ++i)
     {
@@ -268,6 +276,22 @@ VkDescriptorSet PipelineLayoutManager::allocateAndWriteDescriptorSet(
 
         writes[i].pImageInfo = &imageInfo;
       }
+#if defined(_INTR_FEATURE_RAY_TRACING)
+      else if (info.bindingType == BindingType::kAccelerationStructure)
+      {
+        asHandles[i] = AccelerationStructureManager::_vkAccelerationStructure(
+            info.resource);
+
+        VkWriteDescriptorSetAccelerationStructureKHR& asInfo = asWriteInfos[i];
+        asInfo.sType =
+            VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+        asInfo.pNext = nullptr;
+        asInfo.accelerationStructureCount = 1u;
+        asInfo.pAccelerationStructures = &asHandles[i];
+
+        writes[i].pNext = &asInfo;
+      }
+#endif
 
       writes[i].dstArrayElement = 0u;
       writes[i].dstBinding = info.binding;

@@ -132,7 +132,15 @@ enum Enum
   kVertex,
   kFragment,
   kGeometry,
-  kCompute
+  kCompute,
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  kRayGen,
+  kClosestHit,
+  kMiss,
+  kAnyHit,
+  kIntersection,
+#endif
 };
 }
 
@@ -188,6 +196,10 @@ enum Enum
   kStorageImage,
 
   kSampler,
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  kAccelerationStructure,
+#endif
 
   kCount,
 

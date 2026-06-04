@@ -131,6 +131,18 @@ mapGpuProgramTypeToVkShaderStage(GpuProgramType::Enum p_Type)
     return VK_SHADER_STAGE_GEOMETRY_BIT;
   case GpuProgramType::kCompute:
     return VK_SHADER_STAGE_COMPUTE_BIT;
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  case GpuProgramType::kRayGen:
+    return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+  case GpuProgramType::kClosestHit:
+    return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+  case GpuProgramType::kMiss:
+    return VK_SHADER_STAGE_MISS_BIT_KHR;
+  case GpuProgramType::kAnyHit:
+    return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+  case GpuProgramType::kIntersection:
+    return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+#endif
   }
 
   _INTR_ASSERT(false && "Failed to map GPU program type");
@@ -151,6 +163,18 @@ _INTR_INLINE EShLanguage mapGpuProgramTypeToEshLang(GpuProgramType::Enum p_Type)
     return EShLangGeometry;
   case GpuProgramType::kCompute:
     return EShLangCompute;
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  case GpuProgramType::kRayGen:
+    return EShLangRayGen;
+  case GpuProgramType::kClosestHit:
+    return EShLangClosestHit;
+  case GpuProgramType::kMiss:
+    return EShLangMiss;
+  case GpuProgramType::kAnyHit:
+    return EShLangAnyHit;
+  case GpuProgramType::kIntersection:
+    return EShLangIntersect;
+#endif
   }
 
   _INTR_ASSERT(false && "Failed to map GPU program type");
@@ -224,6 +248,10 @@ mapBindingTypeToVkDescriptorType(BindingType::Enum p_BindingType)
     return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   case BindingType::kStorageImage:
     return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  case BindingType::kAccelerationStructure:
+    return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+#endif
   default:
     _INTR_ASSERT(false && "Failed to map binding type");
     return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;

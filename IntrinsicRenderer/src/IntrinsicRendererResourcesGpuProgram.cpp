@@ -310,6 +310,12 @@ void GpuProgramManager::reflectPipelineLayout(
     }
   }
 
+  // Note: VkAccelerationStructureKHR (TLAS) bindings used by RT shaders are
+  // NOT reflected here — the bundled spirv-cross predates
+  // ShaderResources::acceleration_structures.  RT render passes must append
+  // BindingType::kAccelerationStructure entries to _descBindingDescs manually
+  // before calling PipelineLayoutManager::createResources.
+
   std::sort(bindingDecs.begin(), bindingDecs.end(),
             [](const BindingDescription& p_Left,
                const BindingDescription& p_Right) -> bool {

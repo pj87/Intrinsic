@@ -198,11 +198,20 @@ if (INTR_BUILD_STANDALONE_APP)
 endif()
 
 # Library includes
+# When RT is ON the Vulkan SDK glslang ships EShLangRayGen etc. that the
+# bundled submodule glslang lacks.  Put the SDK include path FIRST so the
+# RT-capable ShaderLang.h wins; keep the submodule path for other headers.
+if(INTR_FEATURE_RAY_TRACING)
+  set(_glslang_include_order "${Vulkan_INCLUDE_DIR}" "${GLSLang_INCLUDE_DIR}")
+else()
+  set(_glslang_include_order "${GLSLang_INCLUDE_DIR}" "${Vulkan_INCLUDE_DIR}")
+endif()
+
 set(INTR_DEPENDENCIES
   "dependencies/gli"
   "${FBX_INCLUDE_DIR}"
   "dependencies/glm"
-  "${GLSLang_INCLUDE_DIR}"
+  ${_glslang_include_order}
   "dependencies/rapidjson/include"
   "dependencies/"
   "dependencies/enkits/src"
@@ -212,7 +221,6 @@ set(INTR_DEPENDENCIES
   "${PhysX_INCLUDE_DIR}"
   "${SDL2_INCLUDE_DIR}"
   "dependencies/spirvcross/"
-  "${Vulkan_INCLUDE_DIR}"
   "${BUGSPLAT_INCLUDE_DIR}"
   "dependencies/microprofile"
   "dependencies/tlsf"
@@ -243,13 +251,34 @@ if(INTR_BUILD_INTRINSICED)
   )
 endif()
 
+# When RT is ON, use Vulkan SDK's glslang libs (same version as its RT headers).
+if(INTR_FEATURE_RAY_TRACING AND WIN32)
+  get_filename_component(_vulkan_sdk_root "${Vulkan_INCLUDE_DIR}" DIRECTORY)
+  set(_vulkan_sdk_lib "${_vulkan_sdk_root}/Lib")
+  set(_glslang_libs
+    debug     "${_vulkan_sdk_lib}/glslangd.lib"
+    debug     "${_vulkan_sdk_lib}/HLSLd.lib"
+    debug     "${_vulkan_sdk_lib}/OGLCompilerd.lib"
+    debug     "${_vulkan_sdk_lib}/OSDependentd.lib"
+    debug     "${_vulkan_sdk_lib}/SPIRVd.lib"
+    optimized "${_vulkan_sdk_lib}/glslang.lib"
+    optimized "${_vulkan_sdk_lib}/HLSL.lib"
+    optimized "${_vulkan_sdk_lib}/OGLCompiler.lib"
+    optimized "${_vulkan_sdk_lib}/OSDependent.lib"
+    optimized "${_vulkan_sdk_lib}/SPIRV.lib"
+  )
+  message(STATUS "RT: using Vulkan SDK glslang libs from ${_vulkan_sdk_lib}")
+else()
+  set(_glslang_libs ${GLSLang_LIBRARIES})
+endif()
+
 set(INTR_EXTERNAL_LIBS
   ${Vulkan_LIBRARIES}
   ${LuaJIT_LIBRARIES}
   ${SDL2_LIBRARIES}
   ${PhysX_LIBRARIES}
   ${BUGSPLAT_LIBRARIES}
-  ${GLSLang_LIBRARIES}
+  ${_glslang_libs}
 )
 
 if(UNIX)
