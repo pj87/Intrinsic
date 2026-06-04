@@ -22,10 +22,6 @@ layout(binding = 4) buffer _VoxelBuffer
 	float _Result[];
 };
 
-layout(binding = 5) buffer _VoxelNormalBuffer
-{
-    vec4 _NormalResult[];
-};
 
 // https://www.shadertoy.com/view/4lyBzK
 // Fork of "2 * 2d -> 3d  " by TLC123. https://shadertoy.com/view/MlyfRW
@@ -321,5 +317,4 @@ void main()
 	//_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -sdBox(uv - vec3(1.5), vec3(1.5, 1.5, 1.5));
 
 	//_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -sdSphere(uv - vec3(10.0), 10.0);
-    _NormalResult[id.x + id.y * _Width + id.z * _Width * _Height] = vec4(0.0);
 }

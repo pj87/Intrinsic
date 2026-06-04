@@ -22,10 +22,6 @@ layout(binding = 4) buffer _VoxelBuffer
 	float _Result[];
 };
 
-layout(binding = 5) buffer _VoxelNormalBuffer
-{
-	vec4 _NormalResult[];
-};
 
 // Created by inigo quilez - iq/2014
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
@@ -208,7 +204,6 @@ void main()
 	//_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -mapScaled(uv - vec3(25.0f, 10.0f, 0.0f), c);
 	//_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -mapScaled(uv - vec3(100.0f, 1.0f, 100.0f), c);
 	_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -mapScaled(uv - vec3(_Lacunarity - 32.0, 32.0, _Gain), c);
-	_NormalResult[id.x + id.y * _Width + id.z * _Width * _Height] = -getNormal(uv - vec3(32.0f, 32.0, 32.0f), c);
 	//_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -mapScaled(uv - vec3(100.0f * sin(_Frequency)), c);
 	//_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -sdTorus(uv - vec3(_Frequency), vec2(5.0, 2.0));
 	//_Result[id.x + id.y * _Width + id.z * _Width * _Height] = -sdBox(uv - vec3(10.0), vec3(10.0, 5.0, 5.0));

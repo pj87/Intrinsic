@@ -408,9 +408,6 @@ _INTR_INLINE ComputeCallRef createComputeCallVoxelGeneration(
     ComputeCallManager::bindBuffer(computeCallVoxelGenerationRef, _N(_VoxelBuffer),
         GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
-    ComputeCallManager::bindBuffer(computeCallVoxelGenerationRef, _N(_VoxelNormalBuffer),
-        GpuProgramType::kCompute, mesh->_voxelNormalBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_voxelNormalBufferRef));
     ComputeCallManager::bindImage(computeCallVoxelGenerationRef, _N(_Gradient3D),
         GpuProgramType::kCompute, mesh->_gradient3dImageRef, Samplers::kNearestRepeat);
     ComputeCallManager::bindImage(computeCallVoxelGenerationRef, _N(_PermTable2D),
@@ -556,21 +553,6 @@ void DynamicMeshGeneration::init()
     }
     mesh->_voxelBufferRef = _voxelBufferRef;
     buffersToCreate.push_back(_voxelBufferRef);
-
-    BufferRef _voxelNormalBufferRef =
-        BufferManager::createBuffer(_N(_VoxelNormals));
-    {
-      BufferManager::resetToDefault(_voxelNormalBufferRef);
-      BufferManager::addResourceFlags(
-          _voxelNormalBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
-      BufferManager::_descMemoryPoolType(_voxelNormalBufferRef) =
-          MemoryPoolType::kStaticStagingBuffers;
-      BufferManager::_descBufferType(_voxelNormalBufferRef) = BufferType::kStorage;
-      BufferManager::_descSizeInBytes(_voxelNormalBufferRef) =
-          (*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ) * sizeof(float) * 4;
-    }
-    mesh->_voxelNormalBufferRef = _voxelNormalBufferRef;
-    buffersToCreate.push_back(_voxelNormalBufferRef);
 
     BufferRef _sizesBufferRef = BufferManager::createBuffer(_N(_SizeBuffer));
     {
@@ -1048,10 +1030,6 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
       BufferManager::insertBufferMemoryBarrier(mesh->_voxelBufferRef,
           VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-      BufferManager::insertBufferMemoryBarrier(mesh->_voxelNormalBufferRef,
-          VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
       // Stage 2: compute normals from the now-populated voxel SDF
       RenderSystem::dispatchComputeCall(mesh->_computeCallNormalRef, primaryCmdBuffer);
 
@@ -1330,47 +1308,12 @@ void DynamicMeshGeneration::moveEntities(const Name& name,
   NodeManager::updateTransforms(nodeRef);
 }
 
-void DynamicMeshGeneration::aquireVoxelsAndNormals(DynamicGeneratedMesh& mesh)
-{
-  for (int x = 0; x < 64; x += 1)
-    for (int y = 0; y < 64; y += 1)
-      for (int z = 0; z < 64; z += 1)
-      {
-        float voxel  = getVoxel(mesh, x, y, z);
-        float voxel1 = getVoxel(mesh, x, y + 1, z);
-
-        if (voxel > 0.0f && voxel1 < 0.0f)
-        {
-          Voxel v;
-          v.x = static_cast<float>(x);
-          v.y = static_cast<float>(y);
-          v.z = static_cast<float>(64 - z);
-          PseudoInstancing::voxels.push_back(v);
-
-          glm::vec3 nor = getNormal(mesh, x, y + 1, z);
-          Voxel n;
-          n.x = nor.x;
-          n.y = nor.y;
-          n.z = nor.z;
-          PseudoInstancing::normals.push_back(n);
-        }
-      }
-}
-
 float DynamicMeshGeneration::getVoxel(DynamicGeneratedMesh& mesh,
                                       int x, int y, int z)
 {
   int index = x * (*mesh.sizeY) * (*mesh.sizeZ) + y * (*mesh.sizeZ) + z;
   float* buf = (float*)BufferManager::getGpuMemory(mesh._voxelBufferRef);
   return buf[index];
-}
-
-glm::vec3 DynamicMeshGeneration::getNormal(DynamicGeneratedMesh& mesh,
-                                           int x, int y, int z)
-{
-  int index = 4 * (x * (*mesh.sizeY) * (*mesh.sizeZ) + y * (*mesh.sizeZ) + z);
-  float* buf = (float*)BufferManager::getGpuMemory(mesh._voxelNormalBufferRef);
-  return glm::vec3(buf[index], buf[index + 1], buf[index + 2]);
 }
 
 void DynamicMeshGeneration::loadFromMultipleFiles(const char* p_Path)
