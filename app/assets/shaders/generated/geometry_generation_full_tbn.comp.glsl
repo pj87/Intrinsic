@@ -114,7 +114,7 @@ Vert CreateVertex(vec3 position, vec3 centre, vec3 size)
 	Vert vert;
 	vert.position = vec4(position - centre, 1.0);
 
-	vec3 uv = position / size;
+	vec3 uv = (position + centre) / size;
 	vert.normal = textureLod(_NormalsTex, uv, 0).xyz;
 
 	return vert;
@@ -227,7 +227,7 @@ void main()
 	if (id.z >= _Depth - 1 - _Border) return;
 
 	vec3 pos = vec3(id);
-	vec3 centre = vec3(_Width, 0, _Depth) / 2.0;
+	vec3 centre = vec3(_Width, _Height, _Depth) / 2.0;
 
 	float cube[8];
 	FillCube(id.x, id.y, id.z, cube);
