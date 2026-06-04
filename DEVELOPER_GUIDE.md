@@ -2464,6 +2464,19 @@ dispatch: pipeline, vertex/index buffers, descriptor bindings, and uniform data.
 | `_descBindInfos` | `array<BindingInfo>` | Texture/buffer descriptor bindings |
 | `_descMaterial` | `Dod::Ref` | Material ref (for per-material UBO offset lookup) |
 | `_descMaterialPass` | `uint8_t` | Material pass index |
+| `_descIsProceduralMesh` | `uint8_t` | Non-zero for procedurally generated (marching cubes) meshes |
+| `_descProceduralIndirectBuffer` | `VkBuffer` | Indirect draw buffer for dynamic procedural meshes; `VK_NULL_HANDLE` for static ones |
+
+**Procedural mesh draw path:**
+
+`DrawCallDispatcher` reads `_descIsProceduralMesh` directly instead of doing a
+name lookup into the procedural mesh list. When set:
+- `_descProceduralIndirectBuffer != VK_NULL_HANDLE` → `vkCmdDrawIndirect` (dynamic mesh, vertex count written by GPU)
+- `_descProceduralIndirectBuffer == VK_NULL_HANDLE` → `vkCmdDraw` with `_descVertexCount` (static generated mesh)
+
+Both fields are set each frame in the dynamic mesh per-frame update loop
+(`DynamicMeshGeneration.cpp`) alongside the vertex buffer rebind. They default to
+`0` / `VK_NULL_HANDLE` via `resetToDefault`, so regular meshes are unaffected.
 
 **Binding helpers:**
 
@@ -3566,23 +3579,41 @@ local m = glm.mat4(1.0)
 
 ## 15. Procedural Systems
 
-### Marching cubes terrain
+### Marching cubes pipeline
 
-`RenderPassMarchingCubes` generates a triangle mesh from a 3D voxel grid each
-frame using a compute shader. The voxel data comes from
-`DynamicGeometryGeneration`, which writes density values via a noise function.
+`DynamicMeshGeneration` runs a three-stage compute pipeline per procedural mesh:
 
-Key parameters (in `DynamicGeometryGeneration.cpp`):
-```cpp
-// Grid resolution (must match shader defines)
-const uint32_t GRID_SIZE_X = 64;
-const uint32_t GRID_SIZE_Y = 64;
-const uint32_t GRID_SIZE_Z = 64;
+```
+Stage 1 — voxel shader      writes SDF density into _VoxelBuffer (flat float[])
+Stage 2 — normal_generation reads _VoxelBuffer, writes per-voxel gradients
+                             into a 3D rgba16f texture (_NormalsTex)
+Stage 3 — geometry_generation (marching cubes)
+                             reads _VoxelBuffer + samples _NormalsTex,
+                             writes packed vertex/normal/UV data into
+                             position/normal/tangent/binormal/uv0/color buffers
 ```
 
-To change the terrain generator: edit `dynamic_geometry_generation.comp.glsl`.
-The shader writes into a `_VoxelBuffer` SSBO. Marching cubes then reads this
-buffer and writes triangles into a vertex buffer consumed by the draw pass.
+The geometry generation shader reads normals via `textureLod(_NormalsTex, uv, 0)`
+at each vertex's fractional edge-interpolated position, getting hardware trilinear
+interpolation for smooth surface normals. Merging `normal_generation` into the
+geometry shader would require replacing this with a manual trilinear fetch from the
+flat `_VoxelBuffer` — feasible but non-trivial.
+
+#### Active shader variants
+
+Four shader variants are in use (others were removed as dead code):
+
+| Shader | Used by |
+|--------|---------|
+| `generated/geometry_generation_new.comp.glsl` | temple, houses, ProceduralHouse |
+| `generated/geometry_generation_full_tbn.comp.glsl` | julia, mandelbulb |
+| `generated/normal_generation.comp.glsl` | temple, houses, ProceduralHouse |
+| `generated/normal_generation_smooth.comp.glsl` | julia, mandelbulb |
+
+Each procedural mesh JSON (`app/managers/procedural_meshes/*.procedural_mesh.json`)
+specifies which variants it uses via `voxelShader`, `normalShader`, and
+`geometryShader` fields. Adding a new procedural mesh requires only a JSON file —
+no C++ recompile needed.
 
 ### Static procedural meshes — GBufferGeneratedFlat
 
@@ -3596,13 +3627,13 @@ shader and then rendered with a fixed G-Buffer fragment shader.
 Materials using this pass are in `app/managers/materials/`. Two materials currently
 use it:
 
-| Material | Albedo | Notes |
-|----------|--------|-------|
-| `temple` | `Temple_GEN` | cellular voronoi texture with Sobel normal map |
-| `procedural_house` | — | |
+| Material | Albedo | Shadow | Notes |
+|----------|--------|--------|-------|
+| `temple` | `Temple_GEN` | ✓ | cellular voronoi texture with Sobel normal map |
+| `procedural_house` | `ProceduralHouse_GEN` | ✗ | tri-planar wood/roof blend |
 
-The pass does **not** include `Shadow` in its `materialPassMask`, so these meshes
-cast no shadows of their own but do receive shadows from other casters.
+`temple` includes `Shadow` in its `materialPassMask` so it casts shadows.
+`procedural_house` does not — it receives shadows but does not cast them.
 
 #### Vertex attributes
 
@@ -3668,6 +3699,24 @@ const mat3 TBN_Z = cotangent_frame(inNormal, inViewPosition, inPosition.yx);
 
 Each face samples the normal map independently with its own TBN, then the results
 are blended before the `reflect()` call.
+
+#### Temple bump displacement
+
+`temple_ruins.comp.glsl` applies value-noise bump displacement to every SDF
+primitive before evaluating the signed distance:
+
+```glsl
+float o = (noise3(p * 2.0) - 0.5) * 0.3;
+```
+
+`noise3` is an inline 3D value noise built from a `hash3` + trilinear interpolation
+(no external dependency). The amplitude `0.3` is in ruins-space units; with the
+64³ grid and `mapScaled(p/4)`, this displaces the isosurface by up to ±0.15 ruins
+units ≈ ±0.6 voxels — enough to be visible at marching cubes resolution.
+
+The normal map bumpiness is controlled separately by `bumpness` in
+`texture_nrm_flat_generation.comp.glsl` (currently `0.5`). Lower values → flatter
+normals (higher Z component = `1/bumpness`); higher values → more pronounced bumps.
 
 #### Emissive caution
 

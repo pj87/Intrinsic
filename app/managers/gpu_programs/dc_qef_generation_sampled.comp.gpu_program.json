@@ -1,0 +1,10 @@
+{
+    "name": "dc_qef_generation_sampled.comp",
+    "properties": {
+        "name": "dc_qef_generation_sampled.comp",
+        "gpuProgramName": "generated/dc_qef_generation_sampled.comp.glsl",
+        "entryPoint": "main",
+        "preprocessorDefines": "",
+        "gpuProgramType": 3
+    }
+}

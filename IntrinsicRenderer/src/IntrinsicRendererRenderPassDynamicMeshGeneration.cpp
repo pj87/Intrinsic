@@ -331,119 +331,88 @@ namespace
 
   float target = 0.0f;
 
-_INTR_INLINE ComputeCallRef createComputeCallPolygonization(
-    std::unique_ptr<DynamicGeneratedMesh>& mesh, glm::vec3 p_Dim)
-{
-  ComputeCallRef computeCallMarchingCubesRef =
-      ComputeCallManager::createComputeCall(_N(DynamicMeshGeneration));
-  {
-    ComputeCallManager::resetToDefault(computeCallMarchingCubesRef);
-    ComputeCallManager::addResourceFlags(
-        computeCallMarchingCubesRef, Dod::Resources::ResourceFlags::kResourceVolatile);
-    ComputeCallManager::_descDimensions(computeCallMarchingCubesRef) = glm::uvec3(p_Dim);
-    ComputeCallManager::_descPipeline(computeCallMarchingCubesRef) =
-        mesh->_pipelinePolygonizationRef;
 
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_PositionBuffer),
-        GpuProgramType::kCompute, mesh->_positionBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_positionBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_NormalBuffer),
-        GpuProgramType::kCompute, mesh->_normalBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_normalBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_BinormalBuffer),
-        GpuProgramType::kCompute, mesh->_binormalBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_binormalBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_TangentBuffer),
-        GpuProgramType::kCompute, mesh->_tangentBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_tangentBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_Uv0Buffer),
-        GpuProgramType::kCompute, mesh->_uv0BufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_uv0BufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_ColorBuffer),
-        GpuProgramType::kCompute, mesh->_colorBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_colorBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_CubeEdgeBuffer),
-        GpuProgramType::kCompute, mesh->_cubeEdgeFlagsBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_cubeEdgeFlagsBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_TriangleConnectionBuffer),
-        GpuProgramType::kCompute, mesh->_triangleConnectionBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_triangleConnectionBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_VoxelBuffer),
+_INTR_INLINE void createMeshGenerationComputeCall(
+    std::unique_ptr<DynamicGeneratedMesh>& mesh, const glm::uvec3& computeDim,
+    ComputeCallRefArray& computeCallsToCreate)
+{
+  const bool isDC = mesh->shaders.size() > 3u;
+
+  auto& ref = mesh->_computeCallMarchingCubesRef;
+  ref = ComputeCallManager::createComputeCall(_N(DynamicMeshGeneration));
+  ComputeCallManager::resetToDefault(ref);
+  ComputeCallManager::addResourceFlags(ref, Dod::Resources::ResourceFlags::kResourceVolatile);
+  ComputeCallManager::_descDimensions(ref) = computeDim;
+  ComputeCallManager::_descPipeline(ref) = mesh->_pipelinePolygonizationRef;
+
+  // Output vertex attribute buffers (same for both MC and DC)
+  ComputeCallManager::bindBuffer(ref, _N(_PositionBuffer),
+      GpuProgramType::kCompute, mesh->_positionBufferRef, UboType::kPerInstanceCompute,
+      BufferManager::_descSizeInBytes(mesh->_positionBufferRef));
+  ComputeCallManager::bindBuffer(ref, _N(_NormalBuffer),
+      GpuProgramType::kCompute, mesh->_normalBufferRef, UboType::kPerInstanceCompute,
+      BufferManager::_descSizeInBytes(mesh->_normalBufferRef));
+  ComputeCallManager::bindBuffer(ref, _N(_TangentBuffer),
+      GpuProgramType::kCompute, mesh->_tangentBufferRef, UboType::kPerInstanceCompute,
+      BufferManager::_descSizeInBytes(mesh->_tangentBufferRef));
+  ComputeCallManager::bindBuffer(ref, _N(_BinormalBuffer),
+      GpuProgramType::kCompute, mesh->_binormalBufferRef, UboType::kPerInstanceCompute,
+      BufferManager::_descSizeInBytes(mesh->_binormalBufferRef));
+  ComputeCallManager::bindBuffer(ref, _N(_Uv0Buffer),
+      GpuProgramType::kCompute, mesh->_uv0BufferRef, UboType::kPerInstanceCompute,
+      BufferManager::_descSizeInBytes(mesh->_uv0BufferRef));
+  ComputeCallManager::bindBuffer(ref, _N(_ColorBuffer),
+      GpuProgramType::kCompute, mesh->_colorBufferRef, UboType::kPerInstanceCompute,
+      BufferManager::_descSizeInBytes(mesh->_colorBufferRef));
+
+  if (isDC)
+  {
+    // DC reads QEF-solved cell vertices and the voxel field
+    ComputeCallManager::bindBuffer(ref, _N(_QEFBuffer),
+        GpuProgramType::kCompute, mesh->_dcCellVertexBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_dcCellVertexBufferRef));
+    ComputeCallManager::bindBuffer(ref, _N(_VoxelBuffer),
         GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_DebugBuffer),
-        GpuProgramType::kCompute, mesh->_debugBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_debugBufferRef));
-    ComputeCallManager::bindImage(computeCallMarchingCubesRef, _N(_NormalsTex),
+    ComputeCallManager::bindImage(ref, _N(_NormalsTex),
         GpuProgramType::kCompute, mesh->_normalsImageRef, Samplers::kNearestRepeat);
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_SizesBuffer),
+    ComputeCallManager::bindBuffer(ref, _N(_SizesBuffer),
         GpuProgramType::kCompute, mesh->_sizesBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_sizesBufferRef));
-    ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_TargetBuffer),
+    ComputeCallManager::bindBuffer(ref, _N(_TargetBuffer),
+        GpuProgramType::kCompute, mesh->_targetBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_targetBufferRef));
+  }
+  else
+  {
+    // MC reads lookup tables, the voxel field and optionally writes a vertex count
+    ComputeCallManager::bindBuffer(ref, _N(_CubeEdgeBuffer),
+        GpuProgramType::kCompute, mesh->_cubeEdgeFlagsBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_cubeEdgeFlagsBufferRef));
+    ComputeCallManager::bindBuffer(ref, _N(_TriangleConnectionBuffer),
+        GpuProgramType::kCompute, mesh->_triangleConnectionBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_triangleConnectionBufferRef));
+    ComputeCallManager::bindBuffer(ref, _N(_VoxelBuffer),
+        GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
+    ComputeCallManager::bindBuffer(ref, _N(_DebugBuffer),
+        GpuProgramType::kCompute, mesh->_dcCellVertexBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_dcCellVertexBufferRef));
+    ComputeCallManager::bindImage(ref, _N(_NormalsTex),
+        GpuProgramType::kCompute, mesh->_normalsImageRef, Samplers::kNearestRepeat);
+    ComputeCallManager::bindBuffer(ref, _N(_SizesBuffer),
+        GpuProgramType::kCompute, mesh->_sizesBufferRef, UboType::kPerInstanceCompute,
+        BufferManager::_descSizeInBytes(mesh->_sizesBufferRef));
+    ComputeCallManager::bindBuffer(ref, _N(_TargetBuffer),
         GpuProgramType::kCompute, mesh->_targetBufferRef, UboType::kPerInstanceCompute,
         BufferManager::_descSizeInBytes(mesh->_targetBufferRef));
     if (mesh->isDynamic)
-    {
-      ComputeCallManager::bindBuffer(computeCallMarchingCubesRef, _N(_CountBuffer),
+      ComputeCallManager::bindBuffer(ref, _N(_CountBuffer),
           GpuProgramType::kCompute, mesh->_vertexCountBufferRef, UboType::kPerInstanceCompute,
           BufferManager::_descSizeInBytes(mesh->_vertexCountBufferRef));
-    }
   }
-  return computeCallMarchingCubesRef;
-}
 
-_INTR_INLINE ComputeCallRef createComputeCallVoxelGeneration(
-    std::unique_ptr<DynamicGeneratedMesh>& mesh, glm::vec3 p_Dim)
-{
-  ComputeCallRef computeCallVoxelGenerationRef =
-      ComputeCallManager::createComputeCall(_N(VoxelGeneration));
-  {
-    ComputeCallManager::resetToDefault(computeCallVoxelGenerationRef);
-    ComputeCallManager::addResourceFlags(
-        computeCallVoxelGenerationRef, Dod::Resources::ResourceFlags::kResourceVolatile);
-    ComputeCallManager::_descDimensions(computeCallVoxelGenerationRef) = glm::uvec3(p_Dim);
-    ComputeCallManager::_descPipeline(computeCallVoxelGenerationRef) =
-        mesh->_pipelineVoxelGenerationRef;
-
-    ComputeCallManager::bindBuffer(computeCallVoxelGenerationRef, _N(_VoxelBuffer),
-        GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
-    ComputeCallManager::bindImage(computeCallVoxelGenerationRef, _N(_Gradient3D),
-        GpuProgramType::kCompute, mesh->_gradient3dImageRef, Samplers::kNearestRepeat);
-    ComputeCallManager::bindImage(computeCallVoxelGenerationRef, _N(_PermTable2D),
-        GpuProgramType::kCompute, mesh->_permTable2dImageRef, Samplers::kNearestRepeat);
-    ComputeCallManager::bindBuffer(computeCallVoxelGenerationRef, _N(_SizeBuffer),
-        GpuProgramType::kCompute, mesh->_sizesBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_sizesBufferRef));
-    ComputeCallManager::bindBuffer(computeCallVoxelGenerationRef, _N(_ParametersBuffer),
-        GpuProgramType::kCompute, mesh->_noiseParametersRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_noiseParametersRef));
-  }
-  return computeCallVoxelGenerationRef;
-}
-
-_INTR_INLINE ComputeCallRef createComputeCallNormal(
-    std::unique_ptr<DynamicGeneratedMesh>& mesh, glm::vec3 p_Dim)
-{
-  ComputeCallRef computeCallNormalRef =
-      ComputeCallManager::createComputeCall(_N(NormalGeneration));
-  {
-    ComputeCallManager::resetToDefault(computeCallNormalRef);
-    ComputeCallManager::addResourceFlags(
-        computeCallNormalRef, Dod::Resources::ResourceFlags::kResourceVolatile);
-    ComputeCallManager::_descDimensions(computeCallNormalRef) = glm::uvec3(p_Dim);
-    ComputeCallManager::_descPipeline(computeCallNormalRef) = mesh->_pipelineNormalRef;
-
-    ComputeCallManager::bindImage(computeCallNormalRef, _N(_NormalTex),
-        GpuProgramType::kCompute, mesh->_normalsImageRef, Samplers::kNearestRepeat);
-    ComputeCallManager::bindBuffer(computeCallNormalRef, _N(_NoiseBuffer),
-        GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
-    ComputeCallManager::bindBuffer(computeCallNormalRef, _N(_SizeBuffer),
-        GpuProgramType::kCompute, mesh->_sizesBufferRef, UboType::kPerInstanceCompute,
-        BufferManager::_descSizeInBytes(mesh->_sizesBufferRef));
-  }
-  return computeCallNormalRef;
+  computeCallsToCreate.push_back(ref);
 }
 
   _INTR_INLINE static void updateDataMemory(void* p_Data, BufferRef bufferRef,
@@ -465,7 +434,8 @@ void DynamicMeshGeneration::addDynamicGeneratedMesh(
     const int& sizeX, const int& sizeY, const int& sizeZ,
 	const Name& meshName, const Name&& voxelGenerationShader,
     const Name&& normalGenerationShader, const Name&& geometryGenerationShader,
-	bool isDynamic, float firstParam, float secondParam, int localSize)
+	bool isDynamic, float firstParam, float secondParam, int localSize,
+    const Name&& dcQEFShader)
 {
   std::unique_ptr<DynamicGeneratedMesh> dynamicGenerationMesh =
       std::make_unique<DynamicGeneratedMesh>(
@@ -473,7 +443,8 @@ void DynamicMeshGeneration::addDynamicGeneratedMesh(
           std::move(meshName), std::move(voxelGenerationShader),
           std::move(normalGenerationShader),
           std::move(geometryGenerationShader),
-		  isDynamic, firstParam, secondParam, localSize);
+		  isDynamic, firstParam, secondParam, localSize,
+          std::move(dcQEFShader));
 
   dynamicGenerationMeshes.push_back(std::move(dynamicGenerationMesh));
 }
@@ -569,16 +540,16 @@ void DynamicMeshGeneration::init()
     mesh->_triangleConnectionBufferRef = _triangleConnectionBufferRef;
     buffersToCreate.push_back(_triangleConnectionBufferRef);
 
-    BufferRef _debugBufferRef = BufferManager::createBuffer(_N(_DebugBuffer));
+    BufferRef _dcCellVertexBufferRef = BufferManager::createBuffer(_N(_DebugBuffer));
     {
-      BufferManager::resetToDefault(_debugBufferRef);
+      BufferManager::resetToDefault(_dcCellVertexBufferRef);
       BufferManager::addResourceFlags(
-          _debugBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
-      BufferManager::_descBufferType(_debugBufferRef) = BufferType::kStorage;
-      BufferManager::_descSizeInBytes(_debugBufferRef) = 150000 * 8 * sizeof(float);
+          _dcCellVertexBufferRef, Dod::Resources::ResourceFlags::kResourceVolatile);
+      BufferManager::_descBufferType(_dcCellVertexBufferRef) = BufferType::kStorage;
+      BufferManager::_descSizeInBytes(_dcCellVertexBufferRef) = 150000 * 8 * sizeof(float);
     }
-    mesh->_debugBufferRef = _debugBufferRef;
-    buffersToCreate.push_back(_debugBufferRef);
+    mesh->_dcCellVertexBufferRef = _dcCellVertexBufferRef;
+    buffersToCreate.push_back(_dcCellVertexBufferRef);
 
     BufferRef _vertexCountBufferRef = BufferManager::createBuffer(_N(_CountBuffer));
     {
@@ -592,9 +563,10 @@ void DynamicMeshGeneration::init()
     buffersToCreate.push_back(_vertexCountBufferRef);
 
     // Vertex attribute output buffers written by the polygonization compute shader.
-    // Each slot holds up to 1 vertex; each voxel cube contributes up to 15 slots.
-    const uint32_t maxSlots =
-        (uint32_t)((*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ)) * 15u;
+    // MC: up to 15 vertex slots per cell.  DC: up to 18 (3 edges × 6 verts).
+    const uint32_t gridCells =
+        (uint32_t)((*mesh->sizeX) * (*mesh->sizeY) * (*mesh->sizeZ));
+    const uint32_t maxSlots = gridCells * (mesh->shaders.size() > 3u ? 18u : 15u);
     mesh->indicesNumber = maxSlots;
     mesh->maxIndices = maxSlots;
 
@@ -780,7 +752,7 @@ void DynamicMeshGeneration::postInit()
     mesh->_pipelineNormalRef = _pipelineNormalRef;
     pipelinesToCreate.push_back(_pipelineNormalRef);
 
-    // Polygonization (marching cubes) pipeline
+    // Polygonization (marching cubes or DC geometry) pipeline
     PipelineLayoutRef pipelineLayoutPolygonization =
         PipelineLayoutManager::createPipelineLayout(_N(DynamicMeshGeneration));
     PipelineLayoutManager::resetToDefault(pipelineLayoutPolygonization);
@@ -799,6 +771,26 @@ void DynamicMeshGeneration::postInit()
     mesh->_pipelinePolygonizationRef = _pipelinePolygonizationRef;
     pipelinesToCreate.push_back(_pipelinePolygonizationRef);
 
+    // Dual Contouring QEF pipeline (only when a 4th shader is specified)
+    if (mesh->shaders.size() > 3u)
+    {
+      PipelineLayoutRef pipelineLayoutDCQEF =
+          PipelineLayoutManager::createPipelineLayout(_N(DCQEF));
+      PipelineLayoutManager::resetToDefault(pipelineLayoutDCQEF);
+      GpuProgramManager::reflectPipelineLayout(
+          1u, {GpuProgramManager::getResourceByName(*(mesh->shaders[3]))},
+          pipelineLayoutDCQEF);
+      pipelineLayoutsToCreate.push_back(pipelineLayoutDCQEF);
+
+      PipelineRef _pipelineDCQEFRef = PipelineManager::createPipeline(_N(DCQEF));
+      PipelineManager::resetToDefault(_pipelineDCQEFRef);
+      PipelineManager::_descComputeProgram(_pipelineDCQEFRef) =
+          GpuProgramManager::getResourceByName(*(mesh->shaders[3]));
+      PipelineManager::_descPipelineLayout(_pipelineDCQEFRef) = pipelineLayoutDCQEF;
+      mesh->_pipelineDCQEFRef = _pipelineDCQEFRef;
+      pipelinesToCreate.push_back(_pipelineDCQEFRef);
+    }
+
     PipelineLayoutManager::createResources(pipelineLayoutsToCreate);
     PipelineManager::createResources(pipelinesToCreate);
 
@@ -807,20 +799,77 @@ void DynamicMeshGeneration::postInit()
         mesh->sizes[1] / mesh->localSize,
         mesh->sizes[2] / mesh->localSize);
 
-    ComputeCallRef _computeCallVoxelGenerationRef =
-        createComputeCallVoxelGeneration(mesh, computeDim);
-    mesh->_computeCallVoxelGenerationRef = _computeCallVoxelGenerationRef;
-    computeCallsToCreate.push_back(_computeCallVoxelGenerationRef);
+    // Voxel compute call
+    {
+      auto& ref = mesh->_computeCallVoxelGenerationRef;
+      ref = ComputeCallManager::createComputeCall(_N(VoxelGeneration));
+      ComputeCallManager::resetToDefault(ref);
+      ComputeCallManager::addResourceFlags(ref, Dod::Resources::ResourceFlags::kResourceVolatile);
+      ComputeCallManager::_descDimensions(ref) = computeDim;
+      ComputeCallManager::_descPipeline(ref) = mesh->_pipelineVoxelGenerationRef;
+      ComputeCallManager::bindBuffer(ref, _N(_VoxelBuffer),
+          GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
+      ComputeCallManager::bindImage(ref, _N(_Gradient3D),
+          GpuProgramType::kCompute, mesh->_gradient3dImageRef, Samplers::kNearestRepeat);
+      ComputeCallManager::bindImage(ref, _N(_PermTable2D),
+          GpuProgramType::kCompute, mesh->_permTable2dImageRef, Samplers::kNearestRepeat);
+      ComputeCallManager::bindBuffer(ref, _N(_SizeBuffer),
+          GpuProgramType::kCompute, mesh->_sizesBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_sizesBufferRef));
+      ComputeCallManager::bindBuffer(ref, _N(_ParametersBuffer),
+          GpuProgramType::kCompute, mesh->_noiseParametersRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_noiseParametersRef));
+      computeCallsToCreate.push_back(ref);
+    }
 
-    ComputeCallRef _computeCallNormalRef =
-        createComputeCallNormal(mesh, computeDim);
-    mesh->_computeCallNormalRef = _computeCallNormalRef;
-    computeCallsToCreate.push_back(_computeCallNormalRef);
+    // Normal generation compute call
+    {
+      auto& ref = mesh->_computeCallNormalRef;
+      ref = ComputeCallManager::createComputeCall(_N(NormalGeneration));
+      ComputeCallManager::resetToDefault(ref);
+      ComputeCallManager::addResourceFlags(ref, Dod::Resources::ResourceFlags::kResourceVolatile);
+      ComputeCallManager::_descDimensions(ref) = computeDim;
+      ComputeCallManager::_descPipeline(ref) = mesh->_pipelineNormalRef;
+      ComputeCallManager::bindImage(ref, _N(_NormalTex),
+          GpuProgramType::kCompute, mesh->_normalsImageRef, Samplers::kNearestRepeat);
+      ComputeCallManager::bindBuffer(ref, _N(_NoiseBuffer),
+          GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
+      ComputeCallManager::bindBuffer(ref, _N(_SizeBuffer),
+          GpuProgramType::kCompute, mesh->_sizesBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_sizesBufferRef));
+      computeCallsToCreate.push_back(ref);
+    }
 
-    ComputeCallRef _computeCallMarchingCubesRef =
-        createComputeCallPolygonization(mesh, computeDim);
-    mesh->_computeCallMarchingCubesRef = _computeCallMarchingCubesRef;
-    computeCallsToCreate.push_back(_computeCallMarchingCubesRef);
+    if (mesh->shaders.size() > 3u)
+    {
+      // DC QEF solve compute call
+      auto& ref = mesh->_computeCallDCQEFRef;
+      ref = ComputeCallManager::createComputeCall(_N(DCQEF));
+      ComputeCallManager::resetToDefault(ref);
+      ComputeCallManager::addResourceFlags(ref, Dod::Resources::ResourceFlags::kResourceVolatile);
+      ComputeCallManager::_descDimensions(ref) = computeDim;
+      ComputeCallManager::_descPipeline(ref) = mesh->_pipelineDCQEFRef;
+      ComputeCallManager::bindBuffer(ref, _N(_VoxelBuffer),
+          GpuProgramType::kCompute, mesh->_voxelBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_voxelBufferRef));
+      ComputeCallManager::bindBuffer(ref, _N(_QEFBuffer),
+          GpuProgramType::kCompute, mesh->_dcCellVertexBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_dcCellVertexBufferRef));
+      ComputeCallManager::bindBuffer(ref, _N(_SizesBuffer),
+          GpuProgramType::kCompute, mesh->_sizesBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_sizesBufferRef));
+      ComputeCallManager::bindBuffer(ref, _N(_TargetBuffer),
+          GpuProgramType::kCompute, mesh->_targetBufferRef, UboType::kPerInstanceCompute,
+          BufferManager::_descSizeInBytes(mesh->_targetBufferRef));
+      if (strstr(mesh->shaders[3]->getString().c_str(), "sampled") != nullptr)
+        ComputeCallManager::bindImage(ref, _N(_NormalsTex),
+            GpuProgramType::kCompute, mesh->_normalsImageRef, Samplers::kNearestRepeat);
+      computeCallsToCreate.push_back(ref);
+    }
+
+    createMeshGenerationComputeCall(mesh, computeDim, computeCallsToCreate);
   }
 
   PipelineLayoutManager::createResources(pipelineLayoutsToCreate);
@@ -999,7 +1048,17 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
           VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-      // Stage 3: polygonize with marching cubes → writes vertex attribute buffers
+      if (mesh->_computeCallDCQEFRef.isValid())
+      {
+        // Stage 3a (DC only): solve QEF per cell → _dcCellVertexBufferRef (reused as QEF buffer)
+        RenderSystem::dispatchComputeCall(mesh->_computeCallDCQEFRef, primaryCmdBuffer);
+
+        BufferManager::insertBufferMemoryBarrier(mesh->_dcCellVertexBufferRef,
+            VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      }
+
+      // Stage 3: polygonize (MC or DC geometry) → writes vertex attribute buffers
       RenderSystem::dispatchComputeCall(mesh->_computeCallMarchingCubesRef,
                                         primaryCmdBuffer);
 
@@ -1146,8 +1205,12 @@ void DynamicMeshGeneration::render(float p_DeltaT, CameraRef p_CameraRef)
               DrawCallManager::_descIndexBuffer(dcRef) = BufferRef();
               DrawCallManager::_descVertexCount(dcRef) = mesh->indicesNumber;
               DrawCallManager::_descIsProceduralMesh(dcRef) = true;
+              // DC uses fixed slot reservation — vertex count is always maxSlots.
+              // MC dynamic meshes use the indirect buffer (GPU-written atomic count).
               DrawCallManager::_descProceduralIndirectBuffer(dcRef) =
-                  mesh->isDynamic ? BufferManager::_vkBuffer(mesh->_vertexCountBufferRef) : VK_NULL_HANDLE;
+                  (mesh->isDynamic && !mesh->_computeCallDCQEFRef.isValid())
+                      ? BufferManager::_vkBuffer(mesh->_vertexCountBufferRef)
+                      : VK_NULL_HANDLE;
             }
           }
         }
@@ -1328,11 +1391,15 @@ void DynamicMeshGeneration::loadFromMultipleFiles(const char* p_Path)
         int localSize =
             p.HasMember("localSize") ? p["localSize"].GetInt() : 6;
 
+        const char* dcQEFShader =
+            p.HasMember("dcQEFShader") ? p["dcQEFShader"].GetString() : "";
+
         addDynamicGeneratedMesh(sizeX, sizeY, sizeZ, Name(name),
                                 p["voxelShader"].GetString(),
                                 p["normalShader"].GetString(),
                                 p["geometryShader"].GetString(),
-                                isDynamic, param0, param1, localSize);
+                                isDynamic, param0, param1, localSize,
+                                Name(dcQEFShader));
       }
     }
 

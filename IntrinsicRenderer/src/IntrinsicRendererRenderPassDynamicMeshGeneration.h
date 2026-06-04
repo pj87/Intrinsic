@@ -40,7 +40,8 @@ struct DynamicGeneratedMesh
                        const Name&& normalGenerationShader,
 					   const Name&& geometryGenerationShader,
 					   bool isDynamic, float firstParam,
-					   float secondParam, int localSize)
+					   float secondParam, int localSize,
+                       const Name&& dcQEFShader = Name(""))
   {
     this->meshName = std::make_unique<Name>(meshName);
     this->isDynamic = isDynamic;
@@ -63,6 +64,9 @@ struct DynamicGeneratedMesh
     shaders.push_back(std::make_unique<Name>(voxelGenerationShader));
     shaders.push_back(std::make_unique<Name>(normalGenerationShader));
     shaders.push_back(std::make_unique<Name>(geometryGenerationShader));
+
+    if (dcQEFShader != Name(""))
+      shaders.push_back(std::make_unique<Name>(dcQEFShader));
   }
 
   std::vector<std::unique_ptr<Name>> shaders;
@@ -74,7 +78,10 @@ struct DynamicGeneratedMesh
   BufferRef _tangentBufferRef;
   BufferRef _colorBufferRef;
   BufferRef _uv0BufferRef;
-  BufferRef _debugBufferRef;
+  // DC: one vec4(x,y,z,active) per voxel cell — the QEF-optimal vertex position
+  // produced by dc_qef_generation and consumed by dc_geometry_generation.
+  // Reuses the MC debug buffer slot; MC writes to it but nothing reads it back.
+  BufferRef _dcCellVertexBufferRef;
   BufferRef _voxelBufferRef;
   BufferRef _cubeEdgeFlagsBufferRef;
   BufferRef _triangleConnectionBufferRef;
@@ -90,17 +97,19 @@ struct DynamicGeneratedMesh
   PipelineRef _pipelinePolygonizationRef;
   PipelineRef _pipelineVoxelGenerationRef;
   PipelineRef _pipelineNormalRef;
+  PipelineRef _pipelineDCQEFRef;
 
   ComputeCallRef _computeCallMarchingCubesRef;
   ComputeCallRef _computeCallVoxelGenerationRef;
   ComputeCallRef _computeCallNormalRef;
+  ComputeCallRef _computeCallDCQEFRef;
 
   float params[3];
 
   int renderCounter = 0;
   int updateCounter = 0;
   unsigned indicesNumber = 0;
-  unsigned maxIndices = 0;  // grid*15, never changes after init
+  unsigned maxIndices = 0;  // grid*15 (MC) or grid*18 (DC), never changes after init
   bool isCalled = false;
   bool isDynamic;
   bool needsRecompute = true;  // cleared after first dispatch, set by update()
@@ -119,7 +128,7 @@ struct DynamicMeshGeneration
 									   const Name&, const Name&&, const Name&&,
                                        const Name&&, bool isDynamic = true,
 									   float firstParam = 0.0, float secondParam = 0.0,
-									   int localSize = 6);
+									   int localSize = 6, const Name&& dcQEFShader = Name(""));
 
   static void loadFromMultipleFiles(const char* p_Path);
 
