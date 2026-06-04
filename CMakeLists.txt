@@ -58,6 +58,11 @@ if(MSVC)
   add_definitions("-D_SCL_SECURE_NO_WARNINGS")
   add_definitions("-D_CRT_SECURE_NO_WARNINGS")
   set(INTR_GENERAL_COMPILE_FLAGS "${INTR_GENERAL_COMPILE_FLAGS} /Zi /MP")
+  # Vulkan SDK glslang (used when RT is ON) requires C++17 for inline
+  # variables (PoolAlloc.h) and std::variant (SpirvIntrinsics.h).
+  if(INTR_FEATURE_RAY_TRACING)
+    set(INTR_GENERAL_COMPILE_FLAGS "${INTR_GENERAL_COMPILE_FLAGS} /std:c++17")
+  endif()
   set(INTR_GENERAL_LINK_FLAGS "${INTR_GENERAL_LINK_FLAGS} /DEBUG")
 
   if(INTR_FINAL_BUILD)
