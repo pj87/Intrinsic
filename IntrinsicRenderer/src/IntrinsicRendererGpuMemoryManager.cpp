@@ -74,6 +74,19 @@ void GpuMemoryManager::init()
         MemoryLocation::kHostVisible;
     _memoryPoolNames[MemoryPoolType::kVolatileStagingBuffers] =
         "Volatile Staging Buffers";
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    _memoryPoolToMemoryLocation[MemoryPoolType::kStaticAccelerationStructures] =
+        MemoryLocation::kDeviceLocal;
+    _memoryPoolNames[MemoryPoolType::kStaticAccelerationStructures] =
+        "Static Acceleration Structures";
+
+    _memoryPoolToMemoryLocation
+        [MemoryPoolType::kVolatileAccelerationStructureScratch] =
+            MemoryLocation::kDeviceLocal;
+    _memoryPoolNames[MemoryPoolType::kVolatileAccelerationStructureScratch] =
+        "Volatile AS Scratch";
+#endif
   }
 }
 

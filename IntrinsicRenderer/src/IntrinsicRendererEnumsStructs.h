@@ -32,6 +32,11 @@ enum Enum
 
   kVolatileStagingBuffers,
 
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  kStaticAccelerationStructures,
+  kVolatileAccelerationStructureScratch,
+#endif
+
   kCount,
 
   kRangeStartStatic = kStaticImages,
@@ -142,6 +147,17 @@ enum Enum
 };
 }
 
+#if defined(_INTR_FEATURE_RAY_TRACING)
+namespace AccelerationStructureType
+{
+enum Enum
+{
+  kBottomLevel,
+  kTopLevel
+};
+}
+#endif
+
 namespace BufferType
 {
 enum Enum
@@ -150,7 +166,12 @@ enum Enum
   kIndex16,
   kIndex32,
   kUniform,
-  kStorage
+  kStorage,
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  kAccelerationStructure,
+  kAccelerationStructureScratch,
+#endif
 };
 }
 

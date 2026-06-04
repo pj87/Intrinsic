@@ -175,6 +175,16 @@ mapBufferTypeToVkUsageFlagBits(BufferType::Enum p_BufferType)
     return static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                                               VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                                               VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  case BufferType::kAccelerationStructure:
+    return static_cast<VkBufferUsageFlagBits>(
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  case BufferType::kAccelerationStructureScratch:
+    return static_cast<VkBufferUsageFlagBits>(
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+#endif
   }
 
   _INTR_ASSERT(false && "Failed to map buffer type");

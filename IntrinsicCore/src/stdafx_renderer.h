@@ -50,6 +50,7 @@
 #include "IntrinsicRendererHelper.h"
 #include "IntrinsicRendererResourcesImage.h"
 #include "IntrinsicRendererResourcesBuffer.h"
+#include "IntrinsicRendererResourcesAccelerationStructure.h"
 #include "IntrinsicRendererResourcesPipelineLayout.h"
 #include "IntrinsicRendererResourcesPipeline.h"
 #include "IntrinsicRendererResourcesMaterial.h"

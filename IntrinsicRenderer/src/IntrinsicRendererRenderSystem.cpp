@@ -464,6 +464,9 @@ void RenderSystem::initManagers()
   // Init managers
   {
     BufferManager::init();
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    AccelerationStructureManager::init();
+#endif
     GpuProgramManager::init();
     RenderPassManager::init();
     VertexLayoutManager::init();
