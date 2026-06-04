@@ -307,6 +307,27 @@ struct RenderSystem
   // <-
   static Format::Enum _depthStencilFormatToUse;
 
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  // True when all three RT extensions were found and enabled at device init.
+  static bool _rtEnabled;
+
+  static PFN_vkCreateAccelerationStructureKHR
+      pfnCreateAccelerationStructureKHR;
+  static PFN_vkDestroyAccelerationStructureKHR
+      pfnDestroyAccelerationStructureKHR;
+  static PFN_vkGetAccelerationStructureBuildSizesKHR
+      pfnGetAccelerationStructureBuildSizesKHR;
+  static PFN_vkCmdBuildAccelerationStructuresKHR
+      pfnCmdBuildAccelerationStructuresKHR;
+  static PFN_vkGetAccelerationStructureDeviceAddressKHR
+      pfnGetAccelerationStructureDeviceAddressKHR;
+  static PFN_vkCreateRayTracingPipelinesKHR
+      pfnCreateRayTracingPipelinesKHR;
+  static PFN_vkGetRayTracingShaderGroupHandlesKHR
+      pfnGetRayTracingShaderGroupHandlesKHR;
+  static PFN_vkCmdTraceRaysKHR pfnCmdTraceRaysKHR;
+#endif
+
 private:
   static void initManagers();
 

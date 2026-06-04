@@ -90,6 +90,26 @@ _INTR_ARRAY(VkFence) RenderSystem::_vkDrawFences;
 uint32_t RenderSystem::_allocatedSecondaryCmdBufferCount = 0u;
 _INTR_ARRAY(ResourceReleaseEntry) RenderSystem::_resourcesToFree;
 
+#if defined(_INTR_FEATURE_RAY_TRACING)
+bool RenderSystem::_rtEnabled = false;
+
+PFN_vkCreateAccelerationStructureKHR
+    RenderSystem::pfnCreateAccelerationStructureKHR = nullptr;
+PFN_vkDestroyAccelerationStructureKHR
+    RenderSystem::pfnDestroyAccelerationStructureKHR = nullptr;
+PFN_vkGetAccelerationStructureBuildSizesKHR
+    RenderSystem::pfnGetAccelerationStructureBuildSizesKHR = nullptr;
+PFN_vkCmdBuildAccelerationStructuresKHR
+    RenderSystem::pfnCmdBuildAccelerationStructuresKHR = nullptr;
+PFN_vkGetAccelerationStructureDeviceAddressKHR
+    RenderSystem::pfnGetAccelerationStructureDeviceAddressKHR = nullptr;
+PFN_vkCreateRayTracingPipelinesKHR
+    RenderSystem::pfnCreateRayTracingPipelinesKHR = nullptr;
+PFN_vkGetRayTracingShaderGroupHandlesKHR
+    RenderSystem::pfnGetRayTracingShaderGroupHandlesKHR = nullptr;
+PFN_vkCmdTraceRaysKHR RenderSystem::pfnCmdTraceRaysKHR = nullptr;
+#endif
+
 // <-
 
 void RenderSystem::init(void* p_PlatformHandle, void* p_PlatformWindow)
@@ -492,7 +512,7 @@ void RenderSystem::initVkInstance()
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appInfo.pApplicationName = "Intrinsic";
   appInfo.pEngineName = "Intrinsic";
-  appInfo.apiVersion = VK_API_VERSION_1_0;
+  appInfo.apiVersion = VK_API_VERSION_1_3;
 
   _INTR_ARRAY(const char*) extensionsToEnable;
   {
@@ -689,10 +709,15 @@ void RenderSystem::initVkDevice()
     queueCreateInfo.pQueuePriorities = queuePriorities;
   }
 
-  // Check if debug marker extension is supported
+  // Enumerate device extensions and detect optional/RT support
   bool debugMarkerExtPresent = false;
   bool debugReportExtPresent = false;
   bool maintenance2ExtPresent = false;
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  bool rtAccelStructExtPresent = false;
+  bool rtPipelineExtPresent = false;
+  bool rtDeferredHostOpsExtPresent = false;
+#endif
   {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(_vkPhysicalDevice, nullptr,
@@ -707,14 +732,22 @@ void RenderSystem::initVkDevice()
     for (auto& ext : extensions)
     {
       if (strcmp(ext.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0u)
-      {
-        _INTR_LOG_INFO("Enabling debug markers...");
         debugMarkerExtPresent = true;
-      }
       if (strcmp(ext.extensionName, VK_EXT_DEBUG_REPORT_EXTENSION_NAME) == 0u)
         debugReportExtPresent = true;
       if (strcmp(ext.extensionName, VK_KHR_MAINTENANCE2_EXTENSION_NAME) == 0u)
         maintenance2ExtPresent = true;
+#if defined(_INTR_FEATURE_RAY_TRACING)
+      if (strcmp(ext.extensionName,
+                 VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0u)
+        rtAccelStructExtPresent = true;
+      if (strcmp(ext.extensionName,
+                 VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0u)
+        rtPipelineExtPresent = true;
+      if (strcmp(ext.extensionName,
+                 VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0u)
+        rtDeferredHostOpsExtPresent = true;
+#endif
     }
 
     if (debugMarkerExtPresent && debugReportExtPresent)
@@ -733,6 +766,21 @@ void RenderSystem::initVkDevice()
     }
     if (maintenance2ExtPresent)
       enabledExtensions.push_back(VK_KHR_MAINTENANCE2_EXTENSION_NAME);
+#if defined(_INTR_FEATURE_RAY_TRACING)
+    if (rtAccelStructExtPresent && rtPipelineExtPresent &&
+        rtDeferredHostOpsExtPresent)
+    {
+      enabledExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+      enabledExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+      enabledExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+      _INTR_LOG_INFO("Ray tracing extensions available, enabling...");
+    }
+    else
+    {
+      _INTR_LOG_WARNING("Ray tracing extensions not available on this device, "
+                        "RT will be disabled...");
+    }
+#endif
   }
 
   _INTR_ARRAY(const char*) enabledLayers;
@@ -740,11 +788,49 @@ void RenderSystem::initVkDevice()
     // None yet
   }
 
+  // Build Vulkan 1.2 / 1.3 feature structs (mandatory for BDA, dynamic
+  // rendering, synchronization2 — all core in the respective versions).
+  VkPhysicalDeviceVulkan12Features vk12Features = {};
+  vk12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+  vk12Features.pNext = nullptr;
+  vk12Features.bufferDeviceAddress = VK_TRUE;
+  vk12Features.descriptorIndexing = VK_TRUE;
+
+  VkPhysicalDeviceVulkan13Features vk13Features = {};
+  vk13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+  vk13Features.pNext = &vk12Features;
+  vk13Features.dynamicRendering = VK_TRUE;
+  vk13Features.synchronization2 = VK_TRUE;
+  vk13Features.maintenance4 = VK_TRUE;
+
+  // Head of the pNext chain passed to VkDeviceCreateInfo.
+  void* pNextChainHead = &vk13Features;
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  VkPhysicalDeviceAccelerationStructureFeaturesKHR accelStructFeatures = {};
+  accelStructFeatures.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+  accelStructFeatures.accelerationStructure = VK_TRUE;
+
+  VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures = {};
+  rtPipelineFeatures.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+  rtPipelineFeatures.rayTracingPipeline = VK_TRUE;
+
+  if (rtAccelStructExtPresent && rtPipelineExtPresent &&
+      rtDeferredHostOpsExtPresent)
+  {
+    accelStructFeatures.pNext = pNextChainHead;
+    rtPipelineFeatures.pNext = &accelStructFeatures;
+    pNextChainHead = &rtPipelineFeatures;
+  }
+#endif
+
   // Create device
   VkDeviceCreateInfo deviceCreateInfo = {};
   {
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.pNext = nullptr;
+    deviceCreateInfo.pNext = pNextChainHead;
     deviceCreateInfo.queueCreateInfoCount = 1u;
     deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
     deviceCreateInfo.pEnabledFeatures = &_vkPhysicalDeviceFeatures;
@@ -770,6 +856,31 @@ void RenderSystem::initVkDevice()
   // Retrieve device queue
   vkGetDeviceQueue(_vkDevice, _vkGraphicsAndComputeQueueFamilyIndex, 0u,
                    &_vkQueue);
+
+#if defined(_INTR_FEATURE_RAY_TRACING)
+  // Load RT extension function pointers and mark RT as available.
+  if (rtAccelStructExtPresent && rtPipelineExtPresent &&
+      rtDeferredHostOpsExtPresent)
+  {
+#define INTR_LOAD_RT_PFN(name)                                                 \
+  pfn##name = (PFN_vk##name)vkGetDeviceProcAddr(_vkDevice, "vk" #name);       \
+  _INTR_ASSERT(pfn##name && "Failed to load RT function pointer vk" #name)
+
+    INTR_LOAD_RT_PFN(CreateAccelerationStructureKHR);
+    INTR_LOAD_RT_PFN(DestroyAccelerationStructureKHR);
+    INTR_LOAD_RT_PFN(GetAccelerationStructureBuildSizesKHR);
+    INTR_LOAD_RT_PFN(CmdBuildAccelerationStructuresKHR);
+    INTR_LOAD_RT_PFN(GetAccelerationStructureDeviceAddressKHR);
+    INTR_LOAD_RT_PFN(CreateRayTracingPipelinesKHR);
+    INTR_LOAD_RT_PFN(GetRayTracingShaderGroupHandlesKHR);
+    INTR_LOAD_RT_PFN(CmdTraceRaysKHR);
+
+#undef INTR_LOAD_RT_PFN
+
+    _rtEnabled = true;
+    _INTR_LOG_INFO("Ray tracing enabled.");
+  }
+#endif
 
   // Enable debug markers (if available)
   if (debugMarkerExtPresent)
